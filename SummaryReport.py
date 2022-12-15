@@ -8,18 +8,20 @@ from tkinter.messagebox import showinfo
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import pandas as pd
-import os
+import os,sys
 from datetime import datetime
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning) 
 
 # plt.rcParams.update({'font.size': 22})
 root = tk.Tk()
 root.title('Summary Report')
 root.iconbitmap('summaryreporticon.ico')
-root.geometry("400x500")
+root.geometry("400x550")
 
 
 top = tk.Toplevel() #Creates the toplevel window
-top.geometry("400x500")
+top.geometry("400x550")
 headerlabel = tk.Label(top, text="Kenichi Security (Okada)",wraplength=400, justify="left",font=('Helvetica',15)).pack(side=tk.TOP,anchor=tk.NW,padx=20,pady=20)
 tk.ttk.Separator(top, orient='horizontal').pack(fill='x',pady=5)
 tk.Label(top, text="User Login",wraplength=400, justify="left",font=('Helvetica',13)).pack(side=tk.TOP,anchor=tk.NW,padx=20,pady=20)
@@ -31,7 +33,7 @@ button2 = tk.Button(top, text="Cancel", command=lambda:command2()) #Cancel butto
 # label1 = Label(root, text="This is your main window and you can input anything you want here")
 
 def command1():
-    if entry1.get() == "user" and entry2.get() == "password": #Checks whether username and password are correct
+    if entry1.get() == "admin" and entry2.get() == "1234": #Checks whether username and password are correct
         root.deiconify() #Unhides the root window
         top.destroy() #Removes the toplevel window
 
@@ -46,7 +48,12 @@ entry2.pack()
 button1.pack(pady=10)
 button2.pack()
 # label1.pack()
-
+dropdown_month = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+dropdown_cutoff = ["1-15","16-31"] 
+monthvariable = tk.StringVar(root)
+monthvariable.set(dropdown_month[0]) # default value
+cutoffvariable = tk.StringVar(root)
+cutoffvariable.set(dropdown_cutoff[0]) # default value
 savepdf=tk.IntVar(value=1)
 savexlsx=tk.IntVar(value=1)
 db_filename = "CARD USER I.D LIST 2.xlsx"
@@ -67,14 +74,14 @@ def isNaN(string):
 def computeHrs(timein, timeout):
     if isNaN(timein) or isNaN(timeout):
         return 0
-    myin = timein.split(":")
-    myout = timeout.split(":")
-
-    hrs = int(myout[0])-int(myin[0])
-    if hrs<0:
-        return hrs+24
+    myin = datetime.strptime(timein,"%H:%M:%S")
+    myout = datetime.strptime(timeout,"%H:%M:%S")
+    delta = myout-myin
+    result = round(delta.total_seconds() / 3600,2)
+    if result<0:
+        return 24+result
     else:
-        return hrs
+        return result
 
 def billableHrs(timein, timeout):
     if isNaN(timein) or isNaN(timeout):
@@ -180,9 +187,135 @@ def generateReport():
     if selection ==0:
         generateDailyReport()
     if selection ==1:
-        generateDailyReport()
+        generateBiMonthlyReport()
     if selection ==2:
         generateCEZAReport()
+
+def generateBiMonthlyReport():
+    global dfproc,savexlsx,savepdf
+    
+    
+    print(dfproc)
+    print("generating...")
+    dfproc['Total Hours'] = " "
+    dfproc['Billable Hours'] = " "
+    for index, row in dfproc.iterrows():
+        myhrs = computeHrs(row['Time In'],row['Time Out'])
+        billablehrs = billableHrs(row['Time In'],row['Time Out'])
+        row['Total Hours']=myhrs
+        row['Billable Hours']=billablehrs
+    
+    dfproc = dfproc.reset_index()
+    dfproc = dfproc.drop('index', axis=1) 
+    print(dfproc)
+    col = dfproc.pop("Name")
+    dfproc.insert(0,col.name,col)
+    print("moving aroundd")
+    dfproc['Gender'] = " "
+    dfproc['Remarks'] = " "
+    dfproc['Day'] = " "
+    for index, row in dfproc.iterrows():
+        df_new = db[db['Card N°.'] == row['Card No']]
+        df_new = df_new.reset_index()
+        if df_new.empty:
+            row['Gender'] = " "
+            row['Staff No'] = ""
+        else:
+            row['Gender']=df_new['Gender'][0]
+            row['Staff No'] = df_new['Staff No'][0]
+        myday = datetime.strptime(row['Date'],'%Y-%m-%d').strftime('%a')
+        row['Day']=myday
+    col = dfproc.pop("Card No")
+    dfproc.insert(1,"Employee Number",col)
+    col = dfproc.pop("Gender")
+    dfproc.insert(2,col.name,col)
+    col = dfproc.pop("Department")
+    dfproc.insert(3,"Category",col)
+    col = dfproc.pop("Day")
+    dfproc.insert(5,col.name,col)
+    dfproc = dfproc.fillna('')
+    print(dfproc)
+
+    listnames = (dfproc['Name'].unique())
+    # print(listnames)
+    # dfmonth = pd.DataFrame(data='',columns=dfproc.columns)
+    dfmonth = dfproc.iloc[:0]
+    print(dfmonth)
+    # dfmonth = pd.DataFrame
+    month_sel = monthvariable.get()
+    cutoff_sel = cutoffvariable.get()
+    print("mo:{} cutoff:{}".format(month_sel,cutoff_sel))
+    for index in listnames:
+        # print("ind:{} row:{}".format(index,cntr))
+        if cutoff_sel =="1-15":
+            days = ["01","02","03","04","05","06","07","08","09","10","11","12","13","14","15"]
+        else:
+            days = ["16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31"]
+        
+        df_byname = dfproc[dfproc['Name'] == index]
+        df_byname = df_byname.reset_index()
+        # df_byname = df[df['EPS'].notna()]
+        # print(df_byname)
+
+        for x in days :
+            mymonth = datetime.strptime(month_sel,"%b").strftime('%m')
+            date = "2022-"+mymonth + "-" +x
+            # print(date)
+            new_row = pd.DataFrame({'Name':index,'Date':date},index=[0])
+            # for cntr, row in df_byname.iterrows():
+            #     df_date = df_byname[df_byname['Card N°.'] == date]
+            #     df_date = df_date.reset_index()
+            #     # if not df_date.empty:
+            #     #     if len(df_date.index)==1:
+            #     #         pass
+            #     #         # new_row['Time In']=df_date['Time In'][0]
+            #     #         # new_row['Time Out']=df_date['Time Out'][0]
+            #     #         # new_row['Total Hours']=df_date['Total Hours'][0]
+            #     #         # new_row['Billable Hours']=df_date['Billable Hours'][0]
+            #     #         # new_row['Employee Number'] = df_date['Employee Number'][0]
+            #     #     if len(df_date.index)>1:
+            #     #         if (not isNan(row['Time In'])) and (not isNan(row['Time Out'])):
+            #     #             pass
+            #     #             # new_row['Time In']=df_date['Time In'][0]
+            #     #             # new_row['Time Out']=df_date['Time Out'][0]
+            #     #             # new_row['Total Hours']=df_date['Total Hours'][0]
+            #     #             # new_row['Billable Hours']=df_date['Billable Hours'][0]
+            #     #             # new_row['Employee Number'] = df_date['Employee Number'][0]
+
+            myday = datetime.strptime(date,'%Y-%m-%d').strftime('%a')
+            # new_row['Date'] = datetime.strptime(date,'%Y-%m-%d').strftime('%b %m, %Y')
+            new_row['Day']=myday
+
+            
+            # dfmonth = pd.concat([new_row,dfproc.loc[:]]).reset_index(drop=True)
+            dfmonth = dfmonth.append(new_row,ignore_index=True)
+        new_row = pd.DataFrame({'Name':' ','Total Hours':"Total:"},index=[0])
+        dfmonth = dfmonth.append(new_row,ignore_index=True)
+    dfmonth = dfmonth.fillna('')
+    print(dfmonth)
+    statuslabel.config(text='status: Reports generated')
+    myfilenamelabel.config(text='file: ')
+    if savepdf.get()==1:
+        pdflabel.config(text='pdf: generating...')
+        savePdf(dfmonth,1)
+    if savexlsx.get()==1:
+        excellabel.config(text='spreadsheet: generating...')
+        saveXlsx(dfmonth,1)
+    
+    dfproc.iloc[0:0]
+    df.iloc[0:0]
+    
+    if savepdf.get()==1:
+        statuslabel.config(text='status: opening pdf...')
+        outfilename = pdflabel.cget("text")
+        os.startfile(outfilename[5:])
+    if savexlsx.get()==1:
+        statuslabel.config(text='status: opening spreadheet...')
+        outfilename = excellabel.cget("text")
+        os.startfile(outfilename[13:])
+
+    statuslabel.config(text='status: Done. Open new file')
+    myfilenamelabel.config(text='file: ')
 
 def generateCEZAReport():
     global dfproc,savexlsx,savepdf
@@ -192,6 +325,9 @@ def generateCEZAReport():
     dfproc = dfproc.drop([0])
     dfproc = dfproc.reset_index()
     dfproc = dfproc.drop('index', axis=1) 
+    dfproc = dfproc.sort_values(by=["Name"])
+    print(dfproc)
+    dfproc['USER ID'] = dfproc['USER ID'].fillna(0).astype('int')
     print(dfproc)
     statuslabel.config(text='status: CEZA Report generated')
     myfilenamelabel.config(text='file: ')
@@ -243,18 +379,23 @@ def generateDailyReport():
         df_new = df_new.reset_index()
         if df_new.empty:
             row['Gender'] = " "
+            row['Staff No'] = ""
         else:
             row['Gender']=df_new['Gender'][0]
+            row['Staff No'] = df_new['Staff No'][0]
         myday = datetime.strptime(row['Date'],'%Y-%m-%d').strftime('%a')
+        row['Date'] = datetime.strptime(row['Date'],'%Y-%m-%d').strftime('%b %m, %Y')
         row['Day']=myday
     col = dfproc.pop("Card No")
-    dfproc.insert(1,"Employee Number",col)
+    #dfproc.insert(1,"Employee Number",col)
     col = dfproc.pop("Gender")
-    dfproc.insert(2,col.name,col)
+    dfproc.insert(1,col.name,col)
     col = dfproc.pop("Department")
-    dfproc.insert(3,"Category",col)
+    dfproc.insert(2,"Category",col)
     col = dfproc.pop("Day")
-    dfproc.insert(5,col.name,col)
+    dfproc.insert(4,col.name,col)
+    col = dfproc.pop("Staff No")
+    dfproc.insert(1,"Employee Number",col)
     dfproc = dfproc.fillna('')
     print(dfproc)
     statuslabel.config(text='status: Reports generated')
@@ -316,10 +457,10 @@ def savePdf(dfproc,reporttype):
     fig, ax =plt.subplots(figsize=(8.5,11))
     ax.axis('tight')
     ax.axis('off')
-    the_table = ax.table(cellText=dfproc.values,colLabels=dfproc.columns,loc='center')
+    the_table = ax.table(cellText=dfproc.values,colLabels=dfproc.columns,cellLoc='left',loc='center')
     the_table.auto_set_font_size(False)
     the_table.set_fontsize(6)
-    the_table.auto_set_column_width(col=[0,1,2,3,5])
+    the_table.auto_set_column_width(col=[0,1,2,3,4])
     # the_table[0, col]._text.set_horizontalalignment('left') 
     pp = PdfPages(filename_out.name)
     pp.savefig(fig, bbox_inches='tight')
@@ -348,6 +489,10 @@ myfilenamelabel = tk.Label(root, text="file:",wraplength=400)
 myfilenamelabel.pack(side=tk.TOP,anchor=tk.NW,padx=20)
 tk.ttk.Separator(root, orient='horizontal').pack(fill='x',pady=5)
 
+
+
+
+
 def ShowChoice():
     print(radbut.get())
 
@@ -363,7 +508,11 @@ for text, value in radbut_values:
                    variable=radbut, 
                    command=ShowChoice,
                    value=value,font=('Helvetica',13)).pack(anchor=tk.W)
- 
+    if value == 1:
+        month_drop = tk.OptionMenu(root, monthvariable, *dropdown_month).pack()
+        cutoff_drop = tk.OptionMenu(root, cutoffvariable, *dropdown_cutoff).pack()
+
+
 
 myButton = tk.Button(root, text="Generate Report",command=generateReport,font=('Helvetica',13))
 myButton.pack(side=tk.TOP, anchor=tk.W,padx=20,pady=10)
