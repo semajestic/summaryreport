@@ -1,3 +1,5 @@
+
+
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog as fd
@@ -13,10 +15,40 @@ from datetime import datetime
 root = tk.Tk()
 root.title('Summary Report')
 root.iconbitmap('summaryreporticon.ico')
-root.geometry("400x350")
+root.geometry("400x500")
 
-savepdf=tk.IntVar()
-savexlsx=tk.IntVar()
+
+top = tk.Toplevel() #Creates the toplevel window
+top.geometry("400x500")
+headerlabel = tk.Label(top, text="Kenichi Security (Okada)",wraplength=400, justify="left",font=('Helvetica',15)).pack(side=tk.TOP,anchor=tk.NW,padx=20,pady=20)
+tk.ttk.Separator(top, orient='horizontal').pack(fill='x',pady=5)
+tk.Label(top, text="User Login",wraplength=400, justify="left",font=('Helvetica',13)).pack(side=tk.TOP,anchor=tk.NW,padx=20,pady=20)
+
+entry1 = tk.Entry(top) #Username entry
+entry2 = tk.Entry(top,show="*") #Password entry
+button1 = tk.Button(top, text="Login", command=lambda:command1()) #Login button
+button2 = tk.Button(top, text="Cancel", command=lambda:command2()) #Cancel button
+# label1 = Label(root, text="This is your main window and you can input anything you want here")
+
+def command1():
+    if entry1.get() == "user" and entry2.get() == "password": #Checks whether username and password are correct
+        root.deiconify() #Unhides the root window
+        top.destroy() #Removes the toplevel window
+
+def command2():
+    top.destroy() #Removes the toplevel window
+    root.destroy() #Removes the hidden root window
+    sys.exit() #Ends the script
+
+
+entry1.pack() #These pack the elements, this includes the items for the main window
+entry2.pack()
+button1.pack(pady=10)
+button2.pack()
+# label1.pack()
+
+savepdf=tk.IntVar(value=1)
+savexlsx=tk.IntVar(value=1)
 db_filename = "CARD USER I.D LIST 2.xlsx"
 if (os.path.isfile(db_filename)):
     db = pd.read_excel(db_filename)
@@ -29,8 +61,12 @@ else:
 
 df = pd.DataFrame()
 dfproc = pd.DataFrame()
+def isNaN(string):
+    return string != string
 
 def computeHrs(timein, timeout):
+    if isNaN(timein) or isNaN(timeout):
+        return 0
     myin = timein.split(":")
     myout = timeout.split(":")
 
@@ -41,6 +77,8 @@ def computeHrs(timein, timeout):
         return hrs
 
 def billableHrs(timein, timeout):
+    if isNaN(timein) or isNaN(timeout):
+        return 0
     myin = timein.split(":")
     myout = timeout.split(":")
     inhr = int(myin[0])
@@ -109,13 +147,21 @@ def openFile():
     df.rename(columns=df.iloc[6])
     # df.columns = df.iloc[6]
     # df2 = df.drop(df.index[0:6])
+    result = df.head(10)
+    print("First 10 rows of the DataFrame:")
+    print(result)
+    
     dfproc = df.iloc[7:]
     dfproc.columns = df.iloc[6]
-    dfproc = dfproc.dropna(axis=1)
+    print(dfproc.columns)
+    dfproc = dfproc.loc[:,dfproc.columns.notna()]
+    # dfproc = dfproc.dropna(axis=1)
     dfproc = dfproc.reset_index()
     dfproc = dfproc.drop('index', axis=1)
     dfproc = dfproc.sort_values(by=["Name","Date"])
-
+    result = dfproc.head(10)
+    print("First 10 rows of the DataFrame:")
+    print(result)
     
     # print(dfproc)
     # print("list of guards")
@@ -129,7 +175,51 @@ def openFile():
 
     
 def generateReport():
+    selection = radbut.get()
+    print(selection)
+    if selection ==0:
+        generateDailyReport()
+    if selection ==1:
+        generateDailyReport()
+    if selection ==2:
+        generateCEZAReport()
+
+def generateCEZAReport():
     global dfproc,savexlsx,savepdf
+    # dfproc=db
+    dfproc.iloc[0:0]
+    dfproc = db[['USER ID', 'Name', 'Gender', 'Staff No', 'Department']].copy()
+    dfproc = dfproc.drop([0])
+    dfproc = dfproc.reset_index()
+    dfproc = dfproc.drop('index', axis=1) 
+    print(dfproc)
+    statuslabel.config(text='status: CEZA Report generated')
+    myfilenamelabel.config(text='file: ')
+    if savepdf.get()==1:
+        pdflabel.config(text='pdf: generating...')
+        savePdf(dfproc,2)
+    if savexlsx.get()==1:
+        excellabel.config(text='spreadsheet: generating...')
+        saveXlsx(dfproc,2)
+    
+    dfproc.iloc[0:0]
+    df.iloc[0:0]
+    
+    if savepdf.get()==1:
+        statuslabel.config(text='status: opening pdf...')
+        outfilename = pdflabel.cget("text")
+        os.startfile(outfilename[5:])
+    if savexlsx.get()==1:
+        statuslabel.config(text='status: opening spreadheet...')
+        outfilename = excellabel.cget("text")
+        os.startfile(outfilename[13:])
+
+    statuslabel.config(text='status: Done. Open new file')
+    myfilenamelabel.config(text='file: ')
+
+def generateDailyReport():
+    global dfproc,savexlsx,savepdf
+    print(dfproc)
     print("generating...")
     dfproc['Total Hours'] = " "
     dfproc['Billable Hours'] = " "
@@ -165,31 +255,63 @@ def generateReport():
     dfproc.insert(3,"Category",col)
     col = dfproc.pop("Day")
     dfproc.insert(5,col.name,col)
+    dfproc = dfproc.fillna('')
     print(dfproc)
+    statuslabel.config(text='status: Reports generated')
+    myfilenamelabel.config(text='file: ')
     if savepdf.get()==1:
         pdflabel.config(text='pdf: generating...')
-        savePdf(dfproc)
+        savePdf(dfproc,0)
     if savexlsx.get()==1:
         excellabel.config(text='spreadsheet: generating...')
-        saveXlsx(dfproc)
+        saveXlsx(dfproc,0)
     
     dfproc.iloc[0:0]
-    statuslabel.config(text='status: Report generated, open new file')
+    df.iloc[0:0]
+    
+    if savepdf.get()==1:
+        statuslabel.config(text='status: opening pdf...')
+        outfilename = pdflabel.cget("text")
+        os.startfile(outfilename[5:])
+    if savexlsx.get()==1:
+        statuslabel.config(text='status: opening spreadheet...')
+        outfilename = excellabel.cget("text")
+        os.startfile(outfilename[13:])
+
+    statuslabel.config(text='status: Done. Open new file')
     myfilenamelabel.config(text='file: ')
 
-def saveXlsx(dfproc):
-    filename_out=fd.asksaveasfile(mode='w',defaultextension=".xlsx",filetypes=(("Excel Workbook", "*.xlsx"),("All Files", "*.*")))
+def saveXlsx(dfproc,reporttype):
+    now = datetime.now()
+    if reporttype==0:
+        initfile = "SummaryDailyReport_"+now.strftime("%d-%m-%Y")
+    elif reporttype==1:
+        initfile = "SummaryBiMonthlyReport_"+now.strftime("%d-%m-%Y")
+    elif reporttype==2:
+        initfile = "SummaryCEZAReport_"+now.strftime("%d-%m-%Y")
+    filename_out=fd.asksaveasfile(mode='w',defaultextension=".xlsx",initialfile=initfile,filetypes=(("Excel Workbook", "*.xlsx"),("All Files", "*.*")))
     print(filename_out.name)
-    dfproc.to_excel(filename_out.name,index=False)
+    writer = pd.ExcelWriter(filename_out.name, engine='xlsxwriter')
+    dfproc.to_excel(writer,index=False, sheet_name='Sheet1')
+    for column in dfproc:
+        column_width = max(dfproc[column].astype(str).map(len).max(), len(column))
+        col_idx = dfproc.columns.get_loc(column)
+        writer.sheets['Sheet1'].set_column(col_idx, col_idx, column_width)
+
+    writer.save()
+
     excellabel.config(text='spreadsheet: '+filename_out.name)
 
-def set_align_for_column(table, col, align="left"):
-    cells = [key for key in table._cells if key[1] == col]
-    for cell in cells:
-        table._cells[cell]._loc = align
+def savePdf(dfproc,reporttype):
 
-def savePdf(dfproc):
-    filename_out=fd.asksaveasfile(mode='w',defaultextension=".pdf",filetypes=(("PDF file", "*.pdf"),("All Files", "*.*")))
+    now = datetime.now()
+    if reporttype==0:
+        initfile = "SummaryDailyReport_"+now.strftime("%d-%m-%Y")
+    elif reporttype==1:
+        initfile = "SummaryBiMonthlyReport_"+now.strftime("%d-%m-%Y")
+    elif reporttype==2:
+        initfile = "SummaryCEZAReport_"+now.strftime("%d-%m-%Y")
+    filename_out=fd.asksaveasfile(mode='w',defaultextension=".pdf",initialfile=initfile,filetypes=(("PDF file", "*.pdf"),("All Files", "*.*")))
     print(filename_out.name)
     fig, ax =plt.subplots(figsize=(8.5,11))
     ax.axis('tight')
@@ -209,6 +331,7 @@ def savePdf(dfproc):
     # html_string = df.to_html()
     # pdfkit.from_string(html_string,"output_file.pdf")
     # print("file saved")
+
 def print_selection():
     print("as pdf:{} as xlsx:{}".format(savepdf,savexlsx))
 
@@ -217,18 +340,39 @@ def print_selection():
 
 # myButton = tk.Button(root, text="Enter naym",command=myClick)
 # myButton.pack(padx=20)
-myButton2 = tk.Button(root, text="Open File",command=openFile)
+headerlabel = tk.Label(root, text="Kenichi Security (Okada)",wraplength=400, justify="left",font=('Helvetica',15)).pack(side=tk.TOP,anchor=tk.NW,padx=20,pady=20)
+tk.ttk.Separator(root, orient='horizontal').pack(fill='x',pady=5)
+myButton2 = tk.Button(root, text="Open File",command=openFile,font=('Helvetica',13))
 myButton2.pack(side=tk.TOP, anchor=tk.NW,padx=20,pady=10)
 myfilenamelabel = tk.Label(root, text="file:",wraplength=400)
 myfilenamelabel.pack(side=tk.TOP,anchor=tk.NW,padx=20)
+tk.ttk.Separator(root, orient='horizontal').pack(fill='x',pady=5)
 
-c1 = tk.Checkbutton(root, text='save as PDF',variable=savepdf, onvalue=1, offvalue=0, command=print_selection)
-c1.pack(side=tk.TOP,anchor=tk.W,padx=20)
-c2 = tk.Checkbutton(root, text='save as spreadsheet',variable=savexlsx, onvalue=1, offvalue=0, command=print_selection)
-c2.pack(side=tk.TOP, anchor=tk.W,padx=20)
+def ShowChoice():
+    print(radbut.get())
 
-myButton = tk.Button(root, text="Generate Report",command=generateReport)
+radbut = tk.IntVar()
+radbut.set(0)
+radbut_values = [("Daily T&A Report", 0),
+   	            ("Bi monthly Billing Report", 1),
+                ("CEZA Report", 2)]
+for text, value in radbut_values:
+    tk.Radiobutton(root, 
+                   text=text,
+                   padx = 20, 
+                   variable=radbut, 
+                   command=ShowChoice,
+                   value=value,font=('Helvetica',13)).pack(anchor=tk.W)
+ 
+
+myButton = tk.Button(root, text="Generate Report",command=generateReport,font=('Helvetica',13))
 myButton.pack(side=tk.TOP, anchor=tk.W,padx=20,pady=10)
+c1 = tk.Checkbutton(root, text='save as PDF',variable=savepdf, onvalue=1, offvalue=0, command=print_selection,font=('Helvetica',13))
+c1.pack(side=tk.TOP,anchor=tk.W,padx=20)
+c2 = tk.Checkbutton(root, text='save as spreadsheet',variable=savexlsx, onvalue=1, offvalue=0, command=print_selection,font=('Helvetica',13))
+c2.pack(side=tk.TOP, anchor=tk.W,padx=20)
+tk.ttk.Separator(root, orient='horizontal').pack(fill='x',pady=5)
+
 statuslabel = tk.Label(root, text="status:",wraplength=400, justify="left")
 statuslabel.pack(side=tk.TOP,anchor=tk.NW,padx=20)
 pdflabel = tk.Label(root, text="",wraplength=400, justify="left")
@@ -236,4 +380,5 @@ pdflabel.pack(side=tk.TOP,anchor=tk.NW,padx=20)
 excellabel = tk.Label(root, text="",wraplength=400, justify="left")
 excellabel.pack(side=tk.TOP,anchor=tk.NW,padx=20)
 
+root.withdraw()
 root.mainloop()
