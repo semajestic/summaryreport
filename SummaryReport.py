@@ -256,42 +256,49 @@ def generateBiMonthlyReport():
         df_byname = df_byname.reset_index()
         # df_byname = df[df['EPS'].notna()]
         # print(df_byname)
-
+        runningtotal=0
         for x in days :
             mymonth = datetime.strptime(month_sel,"%b").strftime('%m')
             date = "2022-"+mymonth + "-" +x
             # print(date)
             new_row = pd.DataFrame({'Name':index,'Date':date},index=[0])
-            # for cntr, row in df_byname.iterrows():
-            #     df_date = df_byname[df_byname['Card N°.'] == date]
-            #     df_date = df_date.reset_index()
-            #     # if not df_date.empty:
-            #     #     if len(df_date.index)==1:
-            #     #         pass
-            #     #         # new_row['Time In']=df_date['Time In'][0]
-            #     #         # new_row['Time Out']=df_date['Time Out'][0]
-            #     #         # new_row['Total Hours']=df_date['Total Hours'][0]
-            #     #         # new_row['Billable Hours']=df_date['Billable Hours'][0]
-            #     #         # new_row['Employee Number'] = df_date['Employee Number'][0]
-            #     #     if len(df_date.index)>1:
-            #     #         if (not isNan(row['Time In'])) and (not isNan(row['Time Out'])):
-            #     #             pass
-            #     #             # new_row['Time In']=df_date['Time In'][0]
-            #     #             # new_row['Time Out']=df_date['Time Out'][0]
-            #     #             # new_row['Total Hours']=df_date['Total Hours'][0]
-            #     #             # new_row['Billable Hours']=df_date['Billable Hours'][0]
-            #     #             # new_row['Employee Number'] = df_date['Employee Number'][0]
+            for cntr, row in df_byname.iterrows():
+                df_date = df_byname[df_byname['Date'] == date]
+                df_date = df_date.reset_index()
+                if not df_date.empty:
+                    if len(df_date.index)>=1:
+                        new_row['Time In']=df_date['Time In'][0]
+                        new_row['Time Out']=df_date['Time Out'][0]
+                        new_row['Total Hours']=df_date['Total Hours'][0]
+                        new_row['Billable Hours']=df_date['Billable Hours'][0]
+                        new_row['Employee Number'] = df_date['Employee Number'][0]
+                        new_row['Gender']=df_date['Gender'][0]
+                        new_row['Category']=df_date['Category'][0]
+                        new_row['Staff No']=df_date['Staff No'][0]
+                        runningtotal = runningtotal + int(new_row['Billable Hours'])
+                        break
+                    # if len(df_date.index)>1:
+                    #     if (not isNan(row['Time In'])) and (not isNan(row['Time Out'])):
+                    #         new_row['Time In']=df_date['Time In'][0]
+                    #         new_row['Time Out']=df_date['Time Out'][0]
+                    #         new_row['Total Hours']=df_date['Total Hours'][0]
+                    #         new_row['Billable Hours']=df_date['Billable Hours'][0]
+                    #         new_row['Employee Number'] = df_date['Employee Number'][0]
+                    #         runningtotal = runningtotal + int(new_row['Billable Hours'])
 
             myday = datetime.strptime(date,'%Y-%m-%d').strftime('%a')
             # new_row['Date'] = datetime.strptime(date,'%Y-%m-%d').strftime('%b %m, %Y')
             new_row['Day']=myday
-
+            # runningtotal = runningtotal + new_row['Billable Hours']
             
             # dfmonth = pd.concat([new_row,dfproc.loc[:]]).reset_index(drop=True)
             dfmonth = dfmonth.append(new_row,ignore_index=True)
-        new_row = pd.DataFrame({'Name':' ','Total Hours':"Total:"},index=[0])
+        new_row = pd.DataFrame({'Name':' ','Total Hours':"Total:", 'Billable Hours':runningtotal},index=[0])
         dfmonth = dfmonth.append(new_row,ignore_index=True)
     dfmonth = dfmonth.fillna('')
+    col = dfmonth.pop("Employee Number")
+    col = dfmonth.pop("Staff No")
+    dfmonth.insert(1,"Employee Number",col)
     print(dfmonth)
     statuslabel.config(text='status: Reports generated')
     myfilenamelabel.config(text='file: ')
@@ -384,7 +391,7 @@ def generateDailyReport():
             row['Gender']=df_new['Gender'][0]
             row['Staff No'] = df_new['Staff No'][0]
         myday = datetime.strptime(row['Date'],'%Y-%m-%d').strftime('%a')
-        row['Date'] = datetime.strptime(row['Date'],'%Y-%m-%d').strftime('%b %m, %Y')
+        row['Date'] = datetime.strptime(row['Date'],'%Y-%m-%d').strftime('%b %d, %Y')
         row['Day']=myday
     col = dfproc.pop("Card No")
     #dfproc.insert(1,"Employee Number",col)
