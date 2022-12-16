@@ -13,7 +13,7 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning) 
 
 # plt.rcParams.update({'font.size': 22})
-sys_ver = 0.07
+sys_ver = 0.08
 root = tk.Tk()
 root.title('Summary Report v'+str(sys_ver))
 root.iconbitmap('summaryreporticon.ico')
@@ -225,7 +225,16 @@ def generateBiMonthlyReport():
     dfproc['Day'] = " "
     listtodrop = []
     for index, row in dfproc.iterrows():
-        
+        df_new = db[db['Card N°.'] == row['Card No']]
+        df_new = df_new.reset_index()
+        if df_new.empty:
+            row['Gender'] = " "
+            row['Staff No'] = ""
+        else:
+            row['Gender']=df_new['Gender'][0]
+            row['Staff No'] = df_new['Staff No'][0]
+        myday = datetime.strptime(row['Date'],'%Y-%m-%d').strftime('%a')
+        row['Day']=myday
         # print("index:{} row:{}".format(index,row))
         myhrs = computeHrs(row['Time In'],row['Time Out'])
         billablehrs = billableHrs(row['Time In'],row['Time Out'])
@@ -313,6 +322,10 @@ def generateBiMonthlyReport():
             dfmonth = dfmonth.append(new_row,ignore_index=True)
         new_row = pd.DataFrame({'Name':' ','Total Hours':"Total:", 'Billable Hours':runningtotal},index=[0])
         dfmonth = dfmonth.append(new_row,ignore_index=True)
+    # print("change date")
+    # for index, row in dfmonth.iterrows():
+    #     row['Date'] = datetime.strptime(str(row['Date']),'%Y-%m-%d').strftime('%b %d, %Y')
+    
     dfmonth = dfmonth.fillna('')
     col = dfmonth.pop("Employee Number")
     col = dfmonth.pop("Staff No")
