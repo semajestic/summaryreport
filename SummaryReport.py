@@ -1,5 +1,3 @@
-
-
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog as fd
@@ -9,13 +7,15 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import pandas as pd
 import os,sys
+import numpy as np
 from datetime import datetime
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning) 
 
 # plt.rcParams.update({'font.size': 22})
+sys_ver = 0.07
 root = tk.Tk()
-root.title('Summary Report')
+root.title('Summary Report v'+str(sys_ver))
 root.iconbitmap('summaryreporticon.ico')
 root.geometry("400x550")
 
@@ -33,7 +33,7 @@ button2 = tk.Button(top, text="Cancel", command=lambda:command2()) #Cancel butto
 # label1 = Label(root, text="This is your main window and you can input anything you want here")
 
 def command1():
-    if entry1.get() == "admin" and entry2.get() == "1234": #Checks whether username and password are correct
+    if entry1.get() == "junjun" and entry2.get() == "avelino12345": #Checks whether username and password are correct
         root.deiconify() #Unhides the root window
         top.destroy() #Removes the toplevel window
 
@@ -83,9 +83,16 @@ def computeHrs(timein, timeout):
     else:
         return result
 
-def billableHrs(timein, timeout):
+def billableHrs(timein, timeout):#, shift):
     if isNaN(timein) or isNaN(timeout):
         return 0
+    # if shift == "HOTEL SECURITY (DRIVER)":
+    #     offset = 1
+    # elif shift == "ADMIN I.T":
+    #     offset = 2
+    # else:
+    #     offset = 0
+
     myin = timein.split(":")
     myout = timeout.split(":")
     inhr = int(myin[0])
@@ -140,7 +147,7 @@ def openFile():
     
     hello = "file: " + filename
     myfilenamelabel.config(text=hello)
-    statuslabel.config(text='status: File opened, ready to generate Report')
+    statuslabel.config(text='status: Opening file...')
     excellabel.config(text='')
     pdflabel.config(text='')
     # myLabel.pack(pady=1)
@@ -166,9 +173,10 @@ def openFile():
     dfproc = dfproc.reset_index()
     dfproc = dfproc.drop('index', axis=1)
     dfproc = dfproc.sort_values(by=["Name","Date"])
-    result = dfproc.head(10)
-    print("First 10 rows of the DataFrame:")
-    print(result)
+    # result = dfproc.head(10)
+    # print("First 10 rows of the DataFrame:")
+    # print(result)
+    statuslabel.config(text='status: File opened, ready to generate report')
     
     # print(dfproc)
     # print("list of guards")
@@ -197,6 +205,7 @@ def generateBiMonthlyReport():
     
     print(dfproc)
     print("generating...")
+    statuslabel.config(text='status: generating...')
     dfproc['Total Hours'] = " "
     dfproc['Billable Hours'] = " "
     for index, row in dfproc.iterrows():
@@ -214,17 +223,20 @@ def generateBiMonthlyReport():
     dfproc['Gender'] = " "
     dfproc['Remarks'] = " "
     dfproc['Day'] = " "
+    listtodrop = []
     for index, row in dfproc.iterrows():
-        df_new = db[db['Card N°.'] == row['Card No']]
-        df_new = df_new.reset_index()
-        if df_new.empty:
-            row['Gender'] = " "
-            row['Staff No'] = ""
-        else:
-            row['Gender']=df_new['Gender'][0]
-            row['Staff No'] = df_new['Staff No'][0]
-        myday = datetime.strptime(row['Date'],'%Y-%m-%d').strftime('%a')
-        row['Day']=myday
+        
+        # print("index:{} row:{}".format(index,row))
+        myhrs = computeHrs(row['Time In'],row['Time Out'])
+        billablehrs = billableHrs(row['Time In'],row['Time Out'])
+        row['Total Hours']=myhrs
+        row['Billable Hours']=billablehrs
+        if isNaN(row['Time In']) or isNaN(row['Time Out']):
+            listtodrop.append(index)
+            # continue
+    # print(listtodrop)
+    # dfproc = dfproc.drop(listtodrop)
+
     col = dfproc.pop("Card No")
     dfproc.insert(1,"Employee Number",col)
     col = dfproc.pop("Gender")
@@ -245,8 +257,14 @@ def generateBiMonthlyReport():
     month_sel = monthvariable.get()
     cutoff_sel = cutoffvariable.get()
     print("mo:{} cutoff:{}".format(month_sel,cutoff_sel))
+    total = len(listnames)
+    totcnt = 0
     for index in listnames:
         # print("ind:{} row:{}".format(index,cntr))
+        statustext = "status: Processing data...("+str(totcnt)+"/"+str(total)+")"
+        statuslabel.config(text=statustext)
+        root.update()
+        totcnt +=1
         if cutoff_sel =="1-15":
             days = ["01","02","03","04","05","06","07","08","09","10","11","12","13","14","15"]
         else:
@@ -287,7 +305,7 @@ def generateBiMonthlyReport():
                     #         runningtotal = runningtotal + int(new_row['Billable Hours'])
 
             myday = datetime.strptime(date,'%Y-%m-%d').strftime('%a')
-            # new_row['Date'] = datetime.strptime(date,'%Y-%m-%d').strftime('%b %m, %Y')
+            new_row['Date'] = datetime.strptime(date,'%Y-%m-%d').strftime('%b %d, %Y')
             new_row['Day']=myday
             # runningtotal = runningtotal + new_row['Billable Hours']
             
@@ -300,7 +318,7 @@ def generateBiMonthlyReport():
     col = dfmonth.pop("Staff No")
     dfmonth.insert(1,"Employee Number",col)
     print(dfmonth)
-    statuslabel.config(text='status: Reports generated')
+    statuslabel.config(text='status: Generating reports...')
     myfilenamelabel.config(text='file: ')
     if savepdf.get()==1:
         pdflabel.config(text='pdf: generating...')
@@ -333,7 +351,7 @@ def generateCEZAReport():
     dfproc = dfproc.reset_index()
     dfproc = dfproc.drop('index', axis=1) 
     dfproc = dfproc.sort_values(by=["Name"])
-    print(dfproc)
+    # print(dfproc)
     dfproc['USER ID'] = dfproc['USER ID'].fillna(0).astype('int')
     print(dfproc)
     statuslabel.config(text='status: CEZA Report generated')
@@ -366,12 +384,20 @@ def generateDailyReport():
     print("generating...")
     dfproc['Total Hours'] = " "
     dfproc['Billable Hours'] = " "
+    listtodrop = []
     for index, row in dfproc.iterrows():
+        
+        # print("index:{} row:{}".format(index,row))
         myhrs = computeHrs(row['Time In'],row['Time Out'])
         billablehrs = billableHrs(row['Time In'],row['Time Out'])
         row['Total Hours']=myhrs
         row['Billable Hours']=billablehrs
-    
+        if isNaN(row['Time In']) or isNaN(row['Time Out']):
+            listtodrop.append(index)
+            # continue
+    # print(listtodrop)
+    # dfproc = dfproc.drop(listtodrop)
+
     dfproc = dfproc.reset_index()
     dfproc = dfproc.drop('index', axis=1) 
     print(dfproc)
@@ -381,7 +407,13 @@ def generateDailyReport():
     dfproc['Gender'] = " "
     dfproc['Remarks'] = " "
     dfproc['Day'] = " "
+    total = len(dfproc.index)
+    totcnt = 0
     for index, row in dfproc.iterrows():
+        statustext = "status: Processing data...("+str(totcnt)+"/"+str(total)+")"
+        statuslabel.config(text=statustext)
+        root.update()
+        totcnt+=1
         df_new = db[db['Card N°.'] == row['Card No']]
         df_new = df_new.reset_index()
         if df_new.empty:
@@ -439,6 +471,8 @@ def saveXlsx(dfproc,reporttype):
         initfile = "SummaryCEZAReport_"+now.strftime("%d-%m-%Y")
     filename_out=fd.asksaveasfile(mode='w',defaultextension=".xlsx",initialfile=initfile,filetypes=(("Excel Workbook", "*.xlsx"),("All Files", "*.*")))
     print(filename_out.name)
+    statustext = "status: Creating spreadsheet..."
+    statuslabel.config(text=statustext)
     writer = pd.ExcelWriter(filename_out.name, engine='xlsxwriter')
     dfproc.to_excel(writer,index=False, sheet_name='Sheet1')
     for column in dfproc:
@@ -447,7 +481,8 @@ def saveXlsx(dfproc,reporttype):
         writer.sheets['Sheet1'].set_column(col_idx, col_idx, column_width)
 
     writer.save()
-
+    statustext = "status: Created spreadsheet..."
+    statuslabel.config(text=statustext)
     excellabel.config(text='spreadsheet: '+filename_out.name)
 
 def savePdf(dfproc,reporttype):
@@ -461,18 +496,29 @@ def savePdf(dfproc,reporttype):
         initfile = "SummaryCEZAReport_"+now.strftime("%d-%m-%Y")
     filename_out=fd.asksaveasfile(mode='w',defaultextension=".pdf",initialfile=initfile,filetypes=(("PDF file", "*.pdf"),("All Files", "*.*")))
     print(filename_out.name)
-    fig, ax =plt.subplots(figsize=(8.5,11))
-    ax.axis('tight')
-    ax.axis('off')
-    the_table = ax.table(cellText=dfproc.values,colLabels=dfproc.columns,cellLoc='left',loc='center')
-    the_table.auto_set_font_size(False)
-    the_table.set_fontsize(6)
-    the_table.auto_set_column_width(col=[0,1,2,3,4])
-    # the_table[0, col]._text.set_horizontalalignment('left') 
+    statustext = "status: Creating PDF..."
+    statuslabel.config(text=statustext)
+    groups = dfproc.groupby(np.arange(len(dfproc.index))//60)
     pp = PdfPages(filename_out.name)
-    pp.savefig(fig, bbox_inches='tight')
+    for (frameno, frame) in groups:    
+        statustext = "status: Creating PDF...("+str(frameno)+"/"+str(groups.ngroups)+")"
+        statuslabel.config(text=statustext)
+        root.update()
+        fig, ax =plt.subplots(figsize=(8.5,11))
+        ax.axis('tight')
+        ax.axis('off')
+        the_table = ax.table(cellText=frame.values,colLabels=frame.columns,cellLoc='left',loc='center')
+        the_table.auto_set_font_size(False)
+        the_table.set_fontsize(6)
+        the_table.auto_set_column_width(col=[0,1,2,3,4])
+        plt.close()
+        # the_table[0, col]._text.set_horizontalalignment('left') 
+        
+        pp.savefig(fig, bbox_inches='tight')
     pp.close()
     pdflabel.config(text='pdf: '+filename_out.name)
+    statustext = "status: Created PDF..."
+    statuslabel.config(text=statustext)
     # os.startfile(filename_out.name)
 # def saveFile():
     # print("saving...")
@@ -480,11 +526,11 @@ def savePdf(dfproc,reporttype):
     # pdfkit.from_string(html_string,"output_file.pdf")
     # print("file saved")
 
+
 def print_selection():
     print("as pdf:{} as xlsx:{}".format(savepdf,savexlsx))
 
-# e = tk.Entry(root, width=50, font=('Helvetica',20))
-# e.pack(padx=10, pady=10)
+# e = tk.Entry(root, width=50, font=('Helvetica',20)).pack(padx=10, pady=10)
 
 # myButton = tk.Button(root, text="Enter naym",command=myClick)
 # myButton.pack(padx=20)
@@ -516,8 +562,9 @@ for text, value in radbut_values:
                    command=ShowChoice,
                    value=value,font=('Helvetica',13)).pack(anchor=tk.W)
     if value == 1:
-        month_drop = tk.OptionMenu(root, monthvariable, *dropdown_month).pack()
-        cutoff_drop = tk.OptionMenu(root, cutoffvariable, *dropdown_cutoff).pack()
+        month_drop = tk.OptionMenu(root, monthvariable, *dropdown_month).pack()#side=tk.LEFT,padx=20)
+        cutoff_drop = tk.OptionMenu(root, cutoffvariable, *dropdown_cutoff).pack()#side=tk.LEFT,padx=20)
+        # year_entry = tk.Entry(root).pack()
 
 
 
