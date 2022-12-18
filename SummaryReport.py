@@ -13,7 +13,7 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning) 
 
 # plt.rcParams.update({'font.size': 22})
-sys_ver = 0.08
+sys_ver = 0.09
 root = tk.Tk()
 root.title('Summary Report v'+str(sys_ver))
 root.iconbitmap('summaryreporticon.ico')
@@ -49,13 +49,24 @@ button1.pack(pady=10)
 button2.pack()
 # label1.pack()
 dropdown_month = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+month_30 = ["Apr","Jun","Sep","Nov",]
+month_31 = ["Jan","Mar","May","Jul","Aug","Oct","Dec"]
 dropdown_cutoff = ["1-15","16-31"] 
 monthvariable = tk.StringVar(root)
-monthvariable.set(dropdown_month[0]) # default value
+monthvariable.set(dropdown_month[int(datetime.now().strftime('%m'))-1]) # default value
 cutoffvariable = tk.StringVar(root)
-cutoffvariable.set(dropdown_cutoff[0]) # default value
+if int(datetime.now().strftime('%d')) >15:
+    cutoffvariable.set(dropdown_cutoff[0]) # default value
+else:
+    cutoffvariable.set(dropdown_cutoff[1]) # default value
+# year_entry = tk.Entry(root)
+yearvariable = tk.StringVar(root)
+thisyr = datetime.now().strftime("%Y")
+yearvariable.set(thisyr)
+year_entry = tk.Entry(root,textvariable = yearvariable)
 savepdf=tk.IntVar(value=1)
 savexlsx=tk.IntVar(value=1)
+
 db_filename = "CARD USER I.D LIST 2.xlsx"
 if (os.path.isfile(db_filename)):
     db = pd.read_excel(db_filename)
@@ -83,15 +94,15 @@ def computeHrs(timein, timeout):
     else:
         return result
 
-def billableHrs(timein, timeout):#, shift):
+def billableHrs(timein, timeout, shift):
     if isNaN(timein) or isNaN(timeout):
         return 0
-    # if shift == "HOTEL SECURITY (DRIVER)":
-    #     offset = 1
-    # elif shift == "ADMIN I.T":
-    #     offset = 2
-    # else:
-    #     offset = 0
+    if shift == "HOTEL SECURITY (DRIVER)":
+        offset = -1
+    elif shift == "ADMIN I.T":
+        offset = 2
+    else:
+        offset = 0
 
     myin = timein.split(":")
     myout = timeout.split(":")
@@ -101,44 +112,54 @@ def billableHrs(timein, timeout):#, shift):
     outmin = int(myout[1])
     hrs = outhr-inhr
     # print("hrs:{}".format(hrs))
-    
-    if inhr>=5 and inhr<8:
-        shift = 1 #am shift
-        if inhr==7 and inmin>15 and inmin<=59:
-            late = 1
+    if offset==2:
+        hrs = computeHrs(timein,timeout)
+        if hrs>=11.75:
+            return 12
+        elif hrs<11.75 and hrs>=11:
+            return 11
+        if hrs>=6 and hrs<11:
+            return 6
         else:
-            late = 0
-    elif inhr>=17 and inhr<20:
-        shift = 2 #pm shift
-        if inhr==19 and inmin>15 and inmin<=59:
-            late = 1
-        else:
-            late = 0
+            return 0
     else:
-        return 0
-    
-    if shift==1:
-        if outhr>=19 and outhr<=23:
-            return 12-late
-        elif outhr>=13 and outhr<19:
-            time=outhr-7-late #halfday atleaest 6 hrs 
-            if time >=6:
-                return 6
+        if inhr>=5+offset and inhr<8+offset:
+            shift = 1 #am shift
+            if inhr==7+offset and inmin>15 and inmin<=59:
+                late = 1
             else:
-                return 0
+                late = 0
+        elif inhr>=17+offset and inhr<20+offset:
+            shift = 2 #pm shift
+            if inhr==19+offset and inmin>15 and inmin<=59:
+                late = 1
+            else:
+                late = 0
         else:
             return 0
-    elif shift==2:
-        if outhr >=7 and outhr<=11:
-            return 12-late
-        elif outhr>=1 and outhr<7:
-            time=outhr-19-late+24 #halfday atleaest 6 hrs 
-            if time >=6:
-                return 6
+        
+        if shift==1:
+            if outhr>=19+offset and outhr<=23+offset:
+                return 12-late
+            elif outhr>=13+offset and outhr<19+offset:
+                time=outhr-(7+offset)-late #halfday atleaest 6 hrs 
+                if time >=6:
+                    return 6
+                else:
+                    return 0
             else:
                 return 0
-        else:
-            return 0
+        elif shift==2:
+            if outhr >=7+offset and outhr<=11+offset:
+                return 12-late
+            elif outhr>=1+offset and outhr<7+offset:
+                time=outhr-(19+offset)-late+24 #halfday atleaest 6 hrs 
+                if time >=6:
+                    return 6
+                else:
+                    return 0
+            else:
+                return 0
 
 def openFile():
     global df
@@ -210,7 +231,7 @@ def generateBiMonthlyReport():
     dfproc['Billable Hours'] = " "
     for index, row in dfproc.iterrows():
         myhrs = computeHrs(row['Time In'],row['Time Out'])
-        billablehrs = billableHrs(row['Time In'],row['Time Out'])
+        billablehrs = billableHrs(row['Time In'],row['Time Out'],row['Department'])
         row['Total Hours']=myhrs
         row['Billable Hours']=billablehrs
     
@@ -225,7 +246,8 @@ def generateBiMonthlyReport():
     dfproc['Day'] = " "
     listtodrop = []
     for index, row in dfproc.iterrows():
-        df_new = db[db['Card N°.'] == row['Card No']]
+        # df_new = db[db['Card N°.'] == row['Card No']]
+        df_new = db[db['Name'] == row['Name']]
         df_new = df_new.reset_index()
         if df_new.empty:
             row['Gender'] = " "
@@ -236,10 +258,10 @@ def generateBiMonthlyReport():
         myday = datetime.strptime(row['Date'],'%Y-%m-%d').strftime('%a')
         row['Day']=myday
         # print("index:{} row:{}".format(index,row))
-        myhrs = computeHrs(row['Time In'],row['Time Out'])
-        billablehrs = billableHrs(row['Time In'],row['Time Out'])
-        row['Total Hours']=myhrs
-        row['Billable Hours']=billablehrs
+        # myhrs = computeHrs(row['Time In'],row['Time Out'])
+        # billablehrs = billableHrs(row['Time In'],row['Time Out'])
+        # row['Total Hours']=myhrs
+        # row['Billable Hours']=billablehrs
         if isNaN(row['Time In']) or isNaN(row['Time Out']):
             listtodrop.append(index)
             # continue
@@ -265,7 +287,20 @@ def generateBiMonthlyReport():
     # dfmonth = pd.DataFrame
     month_sel = monthvariable.get()
     cutoff_sel = cutoffvariable.get()
-    print("mo:{} cutoff:{}".format(month_sel,cutoff_sel))
+    year_sel = yearvariable.get()
+    print("mo:{} cutoff:{} yr:{}".format(month_sel,cutoff_sel,year_sel))
+    if cutoff_sel =="1-15":
+        days = ["01","02","03","04","05","06","07","08","09","10","11","12","13","14","15"]
+    else:
+        days = ["16","17","18","19","20","21","22","23","24","25","26","27","28"]#,"29","30","31"]
+        if month_sel in month_30:
+            days.extend(["29","30"])
+        elif month_sel in month_31:
+            days.extend(["29","30","31"])
+        elif month_sel=="Feb":
+            if ((int(year_sel) % 400 == 0) or (int(year_sel) % 100 != 0) and (int(year_sel) % 4 == 0)):
+                days.extend(["29"])
+    print(days)
     total = len(listnames)
     totcnt = 0
     for index in listnames:
@@ -274,10 +309,6 @@ def generateBiMonthlyReport():
         statuslabel.config(text=statustext)
         root.update()
         totcnt +=1
-        if cutoff_sel =="1-15":
-            days = ["01","02","03","04","05","06","07","08","09","10","11","12","13","14","15"]
-        else:
-            days = ["16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31"]
         
         df_byname = dfproc[dfproc['Name'] == index]
         df_byname = df_byname.reset_index()
@@ -286,7 +317,7 @@ def generateBiMonthlyReport():
         runningtotal=0
         for x in days :
             mymonth = datetime.strptime(month_sel,"%b").strftime('%m')
-            date = "2022-"+mymonth + "-" +x
+            date = year_sel+"-"+mymonth + "-" +x
             # print(date)
             new_row = pd.DataFrame({'Name':index,'Date':date},index=[0])
             for cntr, row in df_byname.iterrows():
@@ -402,7 +433,7 @@ def generateDailyReport():
         
         # print("index:{} row:{}".format(index,row))
         myhrs = computeHrs(row['Time In'],row['Time Out'])
-        billablehrs = billableHrs(row['Time In'],row['Time Out'])
+        billablehrs = billableHrs(row['Time In'],row['Time Out'],row['Department'])
         row['Total Hours']=myhrs
         row['Billable Hours']=billablehrs
         if isNaN(row['Time In']) or isNaN(row['Time Out']):
@@ -427,7 +458,8 @@ def generateDailyReport():
         statuslabel.config(text=statustext)
         root.update()
         totcnt+=1
-        df_new = db[db['Card N°.'] == row['Card No']]
+        # df_new = db[db['Card N°.'] == row['Card No']]
+        df_new = db[db['Name'] == row['Name']]
         df_new = df_new.reset_index()
         if df_new.empty:
             row['Gender'] = " "
@@ -435,6 +467,7 @@ def generateDailyReport():
         else:
             row['Gender']=df_new['Gender'][0]
             row['Staff No'] = df_new['Staff No'][0]
+            print("meron naman")
         myday = datetime.strptime(row['Date'],'%Y-%m-%d').strftime('%a')
         row['Date'] = datetime.strptime(row['Date'],'%Y-%m-%d').strftime('%b %d, %Y')
         row['Day']=myday
@@ -503,27 +536,58 @@ def savePdf(dfproc,reporttype):
     now = datetime.now()
     if reporttype==0:
         initfile = "SummaryDailyReport_"+now.strftime("%d-%m-%Y")
+        figtitle = "Kenichi Security (Okada)\nDaily Time & Attendance "+now.strftime("%d-%m-%Y")+"\n"
     elif reporttype==1:
         initfile = "SummaryBiMonthlyReport_"+now.strftime("%d-%m-%Y")
+        month_sel = monthvariable.get()
+        cutoff_sel = cutoffvariable.get()
+        year_sel = yearvariable.get()
+        figtitle = "Kenichi Security (Okada)\nBimonthly Billing Covering "+month_sel
+        # print("mo:{} cutoff:{} yr:{}".format(month_sel,cutoff_sel,year_sel))
+        if cutoff_sel =="1-15":
+            figtitle += " 1-15, "+year_sel+"\n"
+        else:
+            if month_sel in month_30:
+                figtitle += " 16-30, "+year_sel+"\n"
+            elif month_sel in month_31:
+                figtitle += " 16-31, "+year_sel+"\n"
+            elif month_sel=="Feb":
+                if ((int(year_sel) % 400 == 0) or (int(year_sel) % 100 != 0) and (int(year_sel) % 4 == 0)):
+                    figtitle += " 16-29, "+year_sel+"\n"
+                else:
+                    figtitle += " 16-28, "+year_sel+"\n"
     elif reporttype==2:
         initfile = "SummaryCEZAReport_"+now.strftime("%d-%m-%Y")
+        figtitle = "Kenichi Security (Okada)\nCEZA Report as of "+now.strftime("%d-%m-%Y")+"\n"
     filename_out=fd.asksaveasfile(mode='w',defaultextension=".pdf",initialfile=initfile,filetypes=(("PDF file", "*.pdf"),("All Files", "*.*")))
     print(filename_out.name)
     statustext = "status: Creating PDF..."
     statuslabel.config(text=statustext)
-    groups = dfproc.groupby(np.arange(len(dfproc.index))//60)
+    dfproc = dfproc.rename({'USER ID':'User ID','Staff No':'Employee\nNumber','Employee Number':'Employee\nNumber', 'Total Hours':'Total\nHours', 'Billable Hours':'Billable\nHours'},axis=1)
+    groups = dfproc.groupby(np.arange(len(dfproc.index))//50)
     pp = PdfPages(filename_out.name)
+    
     for (frameno, frame) in groups:    
         statustext = "status: Creating PDF...("+str(frameno)+"/"+str(groups.ngroups)+")"
         statuslabel.config(text=statustext)
         root.update()
         fig, ax =plt.subplots(figsize=(8.5,11))
+        ax.set_title(figtitle,fontsize=10)
         ax.axis('tight')
         ax.axis('off')
-        the_table = ax.table(cellText=frame.values,colLabels=frame.columns,cellLoc='left',loc='center')
+        if reporttype==2:
+            the_table = ax.table(cellText=frame.values,colLabels=frame.columns,cellLoc='left',loc='center',colWidths=[.1,.25,.076,.12,.22])
+        else:
+            the_table = ax.table(cellText=frame.values,colLabels=frame.columns,cellLoc='left',loc='center',colWidths=[.25,.12,.076,.22,.11,.046,.09,.09,.052,.052,.072])
+        cellDict = the_table.get_celld()
+        for i in range(0,len(frame.columns)):
+            cellDict[(0,i)].set_height(.03)
+            for j in range(1,len(frame.index)+1):
+                cellDict[(j,i)].set_height(.02)
+
         the_table.auto_set_font_size(False)
         the_table.set_fontsize(6)
-        the_table.auto_set_column_width(col=[0,1,2,3,4])
+        # the_table.auto_set_column_width(col=[0,1,2,3,4])
         plt.close()
         # the_table[0, col]._text.set_horizontalalignment('left') 
         
@@ -565,7 +629,7 @@ def ShowChoice():
 radbut = tk.IntVar()
 radbut.set(0)
 radbut_values = [("Daily T&A Report", 0),
-   	            ("Bi monthly Billing Report", 1),
+   	            ("Bimonthly Billing Report", 1),
                 ("CEZA Report", 2)]
 for text, value in radbut_values:
     tk.Radiobutton(root, 
@@ -577,7 +641,8 @@ for text, value in radbut_values:
     if value == 1:
         month_drop = tk.OptionMenu(root, monthvariable, *dropdown_month).pack()#side=tk.LEFT,padx=20)
         cutoff_drop = tk.OptionMenu(root, cutoffvariable, *dropdown_cutoff).pack()#side=tk.LEFT,padx=20)
-        # year_entry = tk.Entry(root).pack()
+
+        year_entry.pack()
 
 
 
