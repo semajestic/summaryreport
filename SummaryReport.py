@@ -13,24 +13,27 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning) 
 
 # plt.rcParams.update({'font.size': 22})
-sys_ver = 0.09
+sys_ver = "0.11"
 root = tk.Tk()
 root.title('Summary Report v'+str(sys_ver))
 root.iconbitmap('summaryreporticon.ico')
 root.geometry("400x550")
 
+def destroyer():
+    # root.quit()
+    # root.destroy()
+    sys.exit()
+def top_destroyer():
+    # top.quit()
+    # top.destroy()
+    sys.exit()
 
 top = tk.Toplevel() #Creates the toplevel window
 top.geometry("400x550")
+# top.protocol("WM_DELETE_WINDOW", top_destroyer)
 headerlabel = tk.Label(top, text="Kenichi Security (Okada)",wraplength=400, justify="left",font=('Helvetica',15)).pack(side=tk.TOP,anchor=tk.NW,padx=20,pady=20)
 tk.ttk.Separator(top, orient='horizontal').pack(fill='x',pady=5)
 tk.Label(top, text="User Login",wraplength=400, justify="left",font=('Helvetica',13)).pack(side=tk.TOP,anchor=tk.NW,padx=20,pady=20)
-
-entry1 = tk.Entry(top) #Username entry
-entry2 = tk.Entry(top,show="*") #Password entry
-button1 = tk.Button(top, text="Login", command=lambda:command1()) #Login button
-button2 = tk.Button(top, text="Cancel", command=lambda:command2()) #Cancel button
-# label1 = Label(root, text="This is your main window and you can input anything you want here")
 
 def command1():
     if entry1.get() == "junjun" and entry2.get() == "avelino12345": #Checks whether username and password are correct
@@ -42,6 +45,11 @@ def command2():
     root.destroy() #Removes the hidden root window
     sys.exit() #Ends the script
 
+entry1 = tk.Entry(top) #Username entry
+entry2 = tk.Entry(top,show="*") #Password entry
+button1 = tk.Button(top, text="Login", command=lambda:command1()) #Login button
+button2 = tk.Button(top, text="Cancel", command=lambda:command2()) #Cancel button
+# label1 = Label(root, text="This is your main window and you can input anything you want here")
 
 entry1.pack() #These pack the elements, this includes the items for the main window
 entry2.pack()
@@ -82,6 +90,13 @@ dfproc = pd.DataFrame()
 def isNaN(string):
     return string != string
 
+def destroyer():
+    root.quit()
+    root.destroy()
+    top.quit()
+    top.destroy()
+    sys.exit()
+
 def computeHrs(timein, timeout):
     if isNaN(timein) or isNaN(timeout):
         return 0
@@ -94,7 +109,7 @@ def computeHrs(timein, timeout):
     else:
         return result
 
-def billableHrs(timein, timeout, shift):
+def billableHrsOld(timein, timeout, shift):
     if isNaN(timein) or isNaN(timeout):
         return 0
     if shift == "HOTEL SECURITY (DRIVER)":
@@ -136,7 +151,7 @@ def billableHrs(timein, timeout, shift):
             else:
                 late = 0
         else:
-            return 0
+            return 0 #dont accept time ins that are outside the 5-8 and 17-20 window hrs
         
         if shift==1:
             if outhr>=19+offset and outhr<=23+offset:
@@ -160,6 +175,84 @@ def billableHrs(timein, timeout, shift):
                     return 0
             else:
                 return 0
+
+def billableHrs(timein, timeout, shift):
+    if isNaN(timein) or isNaN(timeout):
+        return 0
+    if shift == "HOTEL SECURITY (DRIVER)":
+        offset = -1
+    elif shift == "HOTEL SECURITY (FOYER)": #3pm-3am
+        offset = 8
+    elif shift == "HOTEL SECURITY (TRAFFIC)" or shift =="ARMEDGUARD (TRAFFIC)": #12nn to 12 mn
+        offset = 5
+    elif shift == "ADMIN I.T":
+        offset = 2
+    else:
+        offset = 0
+
+    myin = timein.split(":")
+    myout = timeout.split(":")
+    inhr = int(myin[0])
+    inmin = int(myin[1])
+    outhr = int(myout[0])
+    outmin = int(myout[1])
+    hrs = outhr-inhr
+    # print("hrs:{}".format(hrs))
+    if offset==5:
+        if outhr>=0 and outhr<=3:
+            outhr = outhr+24
+    if offset==8: 
+        if outhr>=0 and outhr<=6:
+            outhr = outhr+24
+    if offset==2:
+        hrs = computeHrs(timein,timeout)
+        if hrs>=11.75:
+            return 12
+        elif hrs<11.75 and hrs>=11:
+            return 11
+        if hrs>=6 and hrs<11:
+            return 6
+        else:
+            return 0
+    else:
+        if inhr>=5+offset and inhr<8+offset:
+            shift = 1 #am shift
+            if inhr==7+offset and inmin>15 and inmin<=59:
+                late = 1
+            else:
+                late = 0
+        elif inhr>=17+offset and inhr<20+offset:
+            shift = 2 #pm shift
+            if inhr==19+offset and inmin>15 and inmin<=59:
+                late = 1
+            else:
+                late = 0
+        else:
+            return 0 #dont accept time ins that are outside the 5-8 and 17-20 window hrs
+        
+        if shift==1:
+            if outhr>=19+offset and outhr<=23+offset:
+                return 12-late
+            elif outhr>=13+offset and outhr<19+offset:
+                time=outhr-(7+offset)-late #halfday atleaest 6 hrs 
+                if time >=6:
+                    return 6
+                else:
+                    return 0
+            else:
+                return 0
+        elif shift==2:
+            if outhr >=7+offset and outhr<=11+offset:
+                return 12-late
+            elif outhr>=1+offset and outhr<7+offset:
+                time=outhr-(19+offset)-late+24 #halfday atleaest 6 hrs 
+                if time >=6:
+                    return 6
+                else:
+                    return 0
+            else:
+                return 0
+    
 
 def openFile():
     global df
@@ -197,6 +290,18 @@ def openFile():
     # result = dfproc.head(10)
     # print("First 10 rows of the DataFrame:")
     # print(result)
+    # listnames = (dfproc['Name'].unique())
+    # for names in listnames:
+    #     # print("ind:{} row:{}".format(index,cntr))
+    #     # statustext = "status: Processing data...("+str(totcnt)+"/"+str(total)+")"
+    #     # statuslabel.config(text=statustext)
+    #     # root.update()
+    #     # totcnt +=1
+        
+    #     df_byname = dfproc[dfproc['Name'] == names]
+    #     df_byname = df_byname.reset_index()
+    #     if df_byname
+
     statuslabel.config(text='status: File opened, ready to generate report')
     
     # print(dfproc)
@@ -218,7 +323,7 @@ def generateReport():
     if selection ==1:
         generateBiMonthlyReport()
     if selection ==2:
-        generateCEZAReport()
+        generatePEZAReport()
 
 def generateBiMonthlyReport():
     global dfproc,savexlsx,savepdf
@@ -386,19 +491,19 @@ def generateBiMonthlyReport():
     statuslabel.config(text='status: Done. Open new file')
     myfilenamelabel.config(text='file: ')
 
-def generateCEZAReport():
+def generatePEZAReport():
     global dfproc,savexlsx,savepdf
     # dfproc=db
     dfproc.iloc[0:0]
-    dfproc = db[['USER ID', 'Name', 'Gender', 'Staff No', 'Department']].copy()
+    dfproc = db[['Name', 'Gender', 'Staff No', 'Department']].copy()
     dfproc = dfproc.drop([0])
     dfproc = dfproc.reset_index()
     dfproc = dfproc.drop('index', axis=1) 
     dfproc = dfproc.sort_values(by=["Name"])
     # print(dfproc)
-    dfproc['USER ID'] = dfproc['USER ID'].fillna(0).astype('int')
+    # dfproc['USER ID'] = dfproc['USER ID'].fillna(0).astype('int')
     print(dfproc)
-    statuslabel.config(text='status: CEZA Report generated')
+    statuslabel.config(text='status: PEZA Report generated')
     myfilenamelabel.config(text='file: ')
     if savepdf.get()==1:
         pdflabel.config(text='pdf: generating...')
@@ -467,7 +572,7 @@ def generateDailyReport():
         else:
             row['Gender']=df_new['Gender'][0]
             row['Staff No'] = df_new['Staff No'][0]
-            print("meron naman")
+            # print("meron naman")
         myday = datetime.strptime(row['Date'],'%Y-%m-%d').strftime('%a')
         row['Date'] = datetime.strptime(row['Date'],'%Y-%m-%d').strftime('%b %d, %Y')
         row['Day']=myday
@@ -514,7 +619,7 @@ def saveXlsx(dfproc,reporttype):
     elif reporttype==1:
         initfile = "SummaryBiMonthlyReport_"+now.strftime("%d-%m-%Y")
     elif reporttype==2:
-        initfile = "SummaryCEZAReport_"+now.strftime("%d-%m-%Y")
+        initfile = "SummaryPEZAReport_"+now.strftime("%d-%m-%Y")
     filename_out=fd.asksaveasfile(mode='w',defaultextension=".xlsx",initialfile=initfile,filetypes=(("Excel Workbook", "*.xlsx"),("All Files", "*.*")))
     print(filename_out.name)
     statustext = "status: Creating spreadsheet..."
@@ -557,8 +662,8 @@ def savePdf(dfproc,reporttype):
                 else:
                     figtitle += " 16-28, "+year_sel+"\n"
     elif reporttype==2:
-        initfile = "SummaryCEZAReport_"+now.strftime("%d-%m-%Y")
-        figtitle = "Kenichi Security (Okada)\nCEZA Report as of "+now.strftime("%d-%m-%Y")+"\n"
+        initfile = "SummaryPEZAReport_"+now.strftime("%d-%m-%Y")
+        figtitle = "Kenichi Security (Okada)\nPEZA Report as of "+now.strftime("%d-%m-%Y")+"\n"
     filename_out=fd.asksaveasfile(mode='w',defaultextension=".pdf",initialfile=initfile,filetypes=(("PDF file", "*.pdf"),("All Files", "*.*")))
     print(filename_out.name)
     statustext = "status: Creating PDF..."
@@ -576,7 +681,7 @@ def savePdf(dfproc,reporttype):
         ax.axis('tight')
         ax.axis('off')
         if reporttype==2:
-            the_table = ax.table(cellText=frame.values,colLabels=frame.columns,cellLoc='left',loc='center',colWidths=[.1,.25,.076,.12,.22])
+            the_table = ax.table(cellText=frame.values,colLabels=frame.columns,cellLoc='left',loc='center',colWidths=[.25,.076,.12,.22])
         else:
             the_table = ax.table(cellText=frame.values,colLabels=frame.columns,cellLoc='left',loc='center',colWidths=[.25,.12,.076,.22,.11,.046,.09,.09,.052,.052,.072])
         cellDict = the_table.get_celld()
@@ -630,7 +735,7 @@ radbut = tk.IntVar()
 radbut.set(0)
 radbut_values = [("Daily T&A Report", 0),
    	            ("Bimonthly Billing Report", 1),
-                ("CEZA Report", 2)]
+                ("PEZA Report", 2)]
 for text, value in radbut_values:
     tk.Radiobutton(root, 
                    text=text,
@@ -663,3 +768,4 @@ excellabel.pack(side=tk.TOP,anchor=tk.NW,padx=20)
 
 root.withdraw()
 root.mainloop()
+root.protocol("WM_DELETE_WINDOW", destroyer)
