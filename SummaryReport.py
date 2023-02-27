@@ -13,7 +13,7 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning) 
 
 # plt.rcParams.update({'font.size': 22})
-sys_ver = "0.12"
+sys_ver = "0.13"
 root = tk.Tk()
 root.title('Summary Report v'+str(sys_ver))
 root.iconbitmap('summaryreporticon.ico')
@@ -122,11 +122,9 @@ def billableHrsNew(timein, timeout, shift):
     df_sched = df_sched.reset_index()
     # print(df_sched)
     if df_sched.empty:
-        print("di ko kilala dept nya: {}".format(shift))
-        df_sched['Day Shift In'][0] = 7
-        df_sched['Day Shift Out'][0] = 19
-        df_sched['Night Shift In'][0] = 19 
-        df_sched['Night Shift Out'][0] = 7
+        # print("di ko kilala dept nya: {}".format(shift))
+        df_sched = db_sched[db_sched['Department'] == "default"]
+        df_sched = df_sched.reset_index()
     else:
         if(df_sched['Remarks'][0]=="flexi"):
             print("flexi boi")
@@ -271,14 +269,18 @@ def billableHrs(timein, timeout, shift):
                     return 0
             else:
                 return 0
-    
+
+
 
 def openFile():
+    if(tinputformat.get()==1):
+        openTransactionalFile()
+    else:
+        openDailyComplete()
+
+def openDailyComplete():
     global df
     global dfproc
-
-    if(tinputformat.get()==1):
-        return 0
 
     filename = fd.askopenfilename()
     
@@ -312,7 +314,7 @@ def openFile():
     dfproc = dfproc.sort_values(by=["Name","Date"])
     # result = dfproc.head(10)
     # print("First 10 rows of the DataFrame:")
-    # print(result)
+    print(dfproc.head(10))
     # listnames = (dfproc['Name'].unique())
     # for names in listnames:
     #     # print("ind:{} row:{}".format(index,cntr))
@@ -336,6 +338,147 @@ def openFile():
     # employeehrs = computeHrs(dfproc['Time In'][testguy],dfproc['Time Out'][testguy])
     # billablehrs = billableHrs(dfproc['Time In'][testguy],dfproc['Time Out'][testguy])
     # print("tothrs:{} billable:{}".format(employeehrs,billablehrs))
+
+def openTransactionalFile():
+    global df
+    global dfproc
+
+    filename = fd.askopenfilename()
+    
+    hello = "file: " + filename
+    myfilenamelabel.config(text=hello)
+    statuslabel.config(text='status: Opening file...')
+    excellabel.config(text='')
+    pdflabel.config(text='')
+    # myLabel.pack(pady=1)
+    # wb = openpyxl.load_workbook(filename)
+    # ws = wb.active
+    df = pd.read_excel(filename)
+
+    # data = list(ws.iter_rows(values_only=True))
+    print(df)
+    print("one  that mattersz")
+    # df.rename(columns=df.iloc[6])
+    # df.columns = df.iloc[6]
+    # df2 = df.drop(df.index[0:6])
+    result = df.head(10)
+    print("First 10 rows of the DataFrame:")
+    print(result)
+    
+    # dfproc = df
+    # dfproc.columns = df.iloc[0]
+    print(df.columns)
+    # dfproc = dfproc.loc[:,dfproc.columns.notna()]
+    # dfproc = dfproc.dropna(axis=1)
+    # dfproc = dfproc.reset_index()
+    # dfproc = dfproc.drop('index', axis=1)
+    df = df.sort_values(by=["Name","Date & Time"])
+    df = df.reset_index()
+    df = df.drop('index', axis=1) 
+    df = df.drop('Company', axis=1) 
+    df = df.drop('Vehicle No', axis=1) 
+    # df['Date'] = str([d.date() for d in df['Date & Time']])
+    # df['Time'] = str([d.time() for d in df['Date & Time']])
+    df['Date'] = [d.strftime("%Y-%m-%d") for d in df['Date & Time']]
+    df['Time'] = [d.strftime("%H:%M:%S") for d in df['Date & Time']]
+    # df['Department'] = db[db['Name'] == row['Name']]
+    df['Department'] = " "
+    prevname = ""
+    prevtrans = ""
+    prevdate = ""
+    total = len(df.index)
+    for index,row in df.iterrows():
+        # if index >=200:
+        #     break
+        # print(df.loc[[index]])
+        statustext = "status: Processing transactional report...("+str(index)+"/"+str(total)+")"
+        statuslabel.config(text=statustext)
+        root.update()
+        if prevname != row['Name']:
+            # new data row
+            temp =db.loc[db['Name'] == row['Name'], 'Department']
+            if(len(temp)>=1):
+                # print("temp: {}".format(temp.item())).
+                mydept = str(temp.item())
+                df.loc[index,'Department']= mydept
+            else:
+                mydept = ""
+
+            apnd_newrow = pd.DataFrame({'Date':row['Date'],'Department':mydept,'Card No':row['Card No'],'Name':row['Name'],'Staff No':row['Staff No']},index=[0])
+            if row['Transaction'] == "Valid Entry Access":
+                apnd_newrow['Time In'] = row['Time']
+            if row['Transaction'] == "Valid Exit Access": #if exit
+                apnd_newrow['Time Out'] = row['Time']
+            dfproc = dfproc.append(apnd_newrow,ignore_index=True)
+        else: 
+            if prevtrans != row['Transaction']:
+                if row['Transaction'] == "Valid Entry Access":
+                    apnd_newrow = pd.DataFrame({'Date':row['Date'],'Name':row['Name'],'Time In':row['Time'],'Department':mydept,'Card No':row['Card No'],'Staff No':row['Staff No']},index=[0])
+                    dfproc = dfproc.append(apnd_newrow,ignore_index=True)
+                if row['Transaction'] == "Valid Exit Access": #if exit
+                    dfproc.loc[dfproc.index[-1], 'Time Out'] = row['Time']
+            else:
+                if row['Transaction'] == "Valid Entry Access":
+                    if row['Date'] != prevdate:
+                        # new data row
+                        pass
+                    else:
+                        pass
+                if row['Transaction'] == "Valid Exit Access": #if exit
+                    # 
+                    if row['Date'] != prevdate:
+                        # new data row
+                        pass
+                    else:
+                        pass
+
+        # aggr_newrow = pd.DataFrame({'Name':index},index=[0])
+        # aggr_newrow['Total'] = int(aggr_newrow['Total Hrs'])
+        # dfproc = dfproc.append(aggr_newrow,ignore_index=True)
+        # dfproca.loc[dfproc.index[-1], 'a'] = 4.0
+
+        #if new name                            : new row matic
+        #if old name, trans  is exit to entry   : new row
+        #if old name, old trans, 
+
+
+        prevname = row['Name']
+        prevtrans = row['Transaction']
+        prevdate = row['Date']
+    # df['Date'] = " "
+    # df['Time'] = " "
+    # for index,row in df.iterrows():
+    #     mydate  = datetime.strptime(str(row['Date & Time']),'%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
+    #     df['Date'][index]  = mydate
+    #     mytime = datetime.strptime(str(row['Date & Time']),'%Y-%m-%d %H:%M:%S').strftime('%H:%M:%S')
+    #     df['Time'][index] = mytime
+    # result = dfproc.head(10)
+    # print("First 10 rows of the DataFrame:")
+    print(dfproc.head(60))
+    # listnames = (dfproc['Name'].unique())
+    # for names in listnames:
+    #     # print("ind:{} row:{}".format(index,cntr))
+    #     # statustext = "status: Processing data...("+str(totcnt)+"/"+str(total)+")"
+    #     # statuslabel.config(text=statustext)
+    #     # root.update()
+    #     # totcnt +=1
+        
+    #     df_byname = dfproc[dfproc['Name'] == names]
+    #     df_byname = df_byname.reset_index()
+    #     if df_byname
+
+    statuslabel.config(text='status: File opened, ready to generate report')
+    
+    # print(dfproc)
+    # print("list of guards")
+    # testguy = 11
+    # print(dfproc['Name'])
+    # print("si {}:".format(testguy))
+    # print(dfproc['Name'][testguy])
+    # employeehrs = computeHrs(dfproc['Time In'][testguy],dfproc['Time Out'][testguy])
+    # billablehrs = billableHrs(dfproc['Time In'][testguy],dfproc['Time Out'][testguy])
+    # print("tothrs:{} billable:{}".format(employeehrs,billablehrs))
+
 
     
 def generateReport():
@@ -361,12 +504,30 @@ def generateNewBiMonthlyReport():
     dfproc['Total Hours'] = " "
     dfproc['Billable Hours'] = " "
     dfproc['is_DS'] = " "
+    # for index, row in dfproc.iterrows():
+    #     myhrs = computeHrs(row['Time In'],row['Time Out'])
+    #     billablehrsnew = billableHrsNew(row['Time In'],row['Time Out'],row['Department'])
+    #     row['Total Hours']=myhrs
+    #     row['Billable Hours']=billablehrsnew[0]
+    #     row['is_DS'] = billablehrsnew[1]
+
     for index, row in dfproc.iterrows():
-        myhrs = computeHrs(row['Time In'],row['Time Out'])
-        billablehrsnew = billableHrsNew(row['Time In'],row['Time Out'],row['Department'])
-        row['Total Hours']=myhrs
-        row['Billable Hours']=billablehrsnew[0]
-        row['is_DS'] = billablehrsnew[1]
+        
+        # print("index:{} row:{}".format(index,row))
+        if isNaN(row['Time In']) or isNaN(row['Time Out']):
+            # listtodrop.append(index)
+            pass
+        else:
+            myhrs = computeHrs(row['Time In'],row['Time Out'])
+            billablehrsnew = billableHrsNew(row['Time In'],row['Time Out'],row['Department'])
+            row['Total Hours']=myhrs
+            # try:
+            row['Billable Hours']=billablehrsnew[0]
+            row['is_DS'] = billablehrsnew[1]
+            # except TypeError:
+            #     print(row)
+        
+            # continue
     
     dfproc = dfproc.reset_index()
     dfproc = dfproc.drop('index', axis=1) 
@@ -389,7 +550,7 @@ def generateNewBiMonthlyReport():
         # billablehrs = billableHrs(row['Time In'],row['Time Out'])
         # row['Total Hours']=myhrs
         # row['Billable Hours']=billablehrs
-        if isNaN(row['Time In']) or isNaN(row['Time Out']):
+        if isNaN(row['Time In']) or isNaN(row['Time Out']) or row['Time In']==' 'or row['Time Out']==' ':
             listtodrop.append(index)
             # continue
 
@@ -550,12 +711,29 @@ def generateBiMonthlyReport():
     statuslabel.config(text='status: generating...')
     dfproc['Total Hours'] = " "
     dfproc['Billable Hours'] = " "
+    # for index, row in dfproc.iterrows():
+    #     myhrs = computeHrs(row['Time In'],row['Time Out'])
+    #     billablehrs = billableHrsNew(row['Time In'],row['Time Out'],row['Department'])
+    #     row['Total Hours']=myhrs
+    #     row['Billable Hours']=billablehrs[0]
+    #     # row['is_DS'] = billablehrs[1]
+    
     for index, row in dfproc.iterrows():
-        myhrs = computeHrs(row['Time In'],row['Time Out'])
-        billablehrs = billableHrsNew(row['Time In'],row['Time Out'],row['Department'])
-        row['Total Hours']=myhrs
-        row['Billable Hours']=billablehrs[0]
-        # row['is_DS'] = billablehrs[1]
+        
+        # print("index:{} row:{}".format(index,row))
+        if isNaN(row['Time In']) or isNaN(row['Time Out']):
+            # listtodrop.append(index)
+            pass
+        else:
+            myhrs = computeHrs(row['Time In'],row['Time Out'])
+            billablehrsnew = billableHrsNew(row['Time In'],row['Time Out'],row['Department'])
+            row['Total Hours']=myhrs
+            # try:
+            row['Billable Hours']=billablehrsnew[0]
+            # except TypeError:
+            #     print(row)
+        
+            # continue
 
     
     dfproc = dfproc.reset_index()
@@ -585,7 +763,7 @@ def generateBiMonthlyReport():
         # billablehrs = billableHrs(row['Time In'],row['Time Out'])
         # row['Total Hours']=myhrs
         # row['Billable Hours']=billablehrs
-        if isNaN(row['Time In']) or isNaN(row['Time Out']):
+        if isNaN(row['Time In']) or isNaN(row['Time Out']) or row['Time In']==' ' or row['Time Out']==' ':
             listtodrop.append(index)
             # continue
     # print(listtodrop)
@@ -656,7 +834,7 @@ def generateBiMonthlyReport():
                         new_row['Gender']=df_date['Gender'][0]
                         new_row['Category']=df_date['Category'][0]
                         new_row['Staff No']=df_date['Staff No'][0]
-                        runningtotal = runningtotal + int(new_row['Billable Hours'])
+                        runningtotal = runningtotal + int(float(new_row['Billable Hours']))
                         break
                     # if len(df_date.index)>1:
                     #     if (not isNan(row['Time In'])) and (not isNan(row['Time Out'])):
@@ -769,12 +947,17 @@ def generateDailyReport():
     for index, row in dfproc.iterrows():
         
         # print("index:{} row:{}".format(index,row))
-        myhrs = computeHrs(row['Time In'],row['Time Out'])
-        billablehrsnew = billableHrsNew(row['Time In'],row['Time Out'],row['Department'])
-        row['Total Hours']=myhrs
-        row['Billable Hours']=billablehrsnew[0]
         if isNaN(row['Time In']) or isNaN(row['Time Out']):
             listtodrop.append(index)
+        else:
+            myhrs = computeHrs(row['Time In'],row['Time Out'])
+            billablehrsnew = billableHrsNew(row['Time In'],row['Time Out'],row['Department'])
+            row['Total Hours']=myhrs
+            try:
+                row['Billable Hours']=billablehrsnew[0]
+            except TypeError:
+                print(row)
+        
             # continue
     # print(listtodrop)
     # dfproc = dfproc.drop(listtodrop)
@@ -1062,7 +1245,7 @@ headerlabel = tk.Label(root, text="Kenichi Security (Okada)",wraplength=400, jus
 tk.ttk.Separator(root, orient='horizontal').pack(fill='x',pady=5)
 myButton2 = tk.Button(root, text="Open File",command=openFile,font=('Helvetica',13))
 myButton2.pack(side=tk.TOP, anchor=tk.NW,padx=20,pady=10)
-input_format = tk.Checkbutton(root, text='Transactional input file (not yet supported)',variable=tinputformat, onvalue=1, offvalue=0, command=print_selection1,font=('Helvetica',9))
+input_format = tk.Checkbutton(root, text='Transactional input file',variable=tinputformat, onvalue=1, offvalue=0, command=print_selection1,font=('Helvetica',9))
 input_format.pack(anchor=tk.W,padx=20)
 myfilenamelabel = tk.Label(root, text="file:",wraplength=400)
 myfilenamelabel.pack(side=tk.TOP,anchor=tk.NW,padx=20)
