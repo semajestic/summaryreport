@@ -13,7 +13,7 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning) 
 
 # plt.rcParams.update({'font.size': 22})
-sys_ver = "0.13"
+sys_ver = "0.14"
 root = tk.Tk()
 root.title('Summary Report v'+str(sys_ver))
 root.iconbitmap('summaryreporticon.ico')
@@ -387,6 +387,7 @@ def openTransactionalFile():
     prevtrans = ""
     prevdate = ""
     total = len(df.index)
+    dfproc = pd.DataFrame(columns=["Date","Department","Card No","Name","Staff No","Time In","Time Out"])
     for index,row in df.iterrows():
         # if index >=200:
         #     break
@@ -430,6 +431,7 @@ def openTransactionalFile():
                         # new data row
                         pass
                     else:
+                        dfproc.loc[dfproc.index[-1], 'Time Out'] = row['Time']
                         pass
 
         # aggr_newrow = pd.DataFrame({'Name':index},index=[0])
@@ -633,15 +635,22 @@ def generateNewBiMonthlyReport():
                         new_row['Total Hours']=df_date['Total Hours'][0]
                         new_row['Billable Hours']=df_date['Billable Hours'][0]
                         new_row['Category']=df_date['Category'][0]
-                        runningtotal = runningtotal + int(new_row['Billable Hours'])
-                        
-                        if int(df_date['is_DS'])==1:
-                            aggr_newrow[str(x)+" ds"] = df_date['Billable Hours'][0]
-                            totalhrs_ds = totalhrs_ds + int(df_date['Billable Hours'][0])
-                        elif int(df_date['is_DS'])==0:
-                            aggr_newrow[str(x)+" ns"] = df_date['Billable Hours'][0]
-                            totalhrs_ns = totalhrs_ns + int(df_date['Billable Hours'][0])
-                        totaldays = totaldays + 1
+                        try: 
+                            runningtotal = runningtotal + int(new_row['Billable Hours'])
+                        except ValueError:
+                            print("[ERR RUNNINGTOT] index: {}")
+
+                        try: 
+                            
+                            if int(df_date['is_DS'][0])==1:
+                                aggr_newrow[str(x)+" ds"] = df_date['Billable Hours'][0]
+                                totalhrs_ds = totalhrs_ds + int(df_date['Billable Hours'][0])
+                            elif int(df_date['is_DS'][0])==0:
+                                aggr_newrow[str(x)+" ns"] = df_date['Billable Hours'][0]
+                                totalhrs_ns = totalhrs_ns + int(df_date['Billable Hours'][0])
+                            totaldays = totaldays + 1
+                        except ValueError:
+                            print("[ERR RUNNINGTOT] index: {}")
 
                         break
                     # if len(df_date.index)>1:
@@ -763,7 +772,9 @@ def generateBiMonthlyReport():
         # billablehrs = billableHrs(row['Time In'],row['Time Out'])
         # row['Total Hours']=myhrs
         # row['Billable Hours']=billablehrs
-        if isNaN(row['Time In']) or isNaN(row['Time Out']) or row['Time In']==' ' or row['Time Out']==' ':
+        # if not str(row['Billable Hours']).isdigit():
+        #     print(row)
+        if isNaN(row['Time In']) or isNaN(row['Time Out']) or row['Time In']==' ' or row['Time Out']==' ' or not str(row['Billable Hours']).isdigit():
             listtodrop.append(index)
             # continue
     # print(listtodrop)
@@ -834,7 +845,11 @@ def generateBiMonthlyReport():
                         new_row['Gender']=df_date['Gender'][0]
                         new_row['Category']=df_date['Category'][0]
                         new_row['Staff No']=df_date['Staff No'][0]
-                        runningtotal = runningtotal + int(float(new_row['Billable Hours']))
+                        try: 
+                            runningtotal = runningtotal + int(new_row['Billable Hours'])
+                        except ValueError:
+                            print("[ERR RUNNINGTOT] index: {}")
+                            # print(new_row)
                         break
                     # if len(df_date.index)>1:
                     #     if (not isNan(row['Time In'])) and (not isNan(row['Time Out'])):
@@ -1236,6 +1251,9 @@ def print_selection():
     print("as pdf:{} as xlsx:{}".format(savepdf.get(),savexlsx.get()))
 def print_selection1():
     print("bimonthly format:{}".format(bimoformat.get()))
+def print_selection2():
+    print("open file format:{}".format(tinputformat.get()))
+    myfilenamelabel.config(text='file: ')
 
 # e = tk.Entry(root, width=50, font=('Helvetica',20)).pack(padx=10, pady=10)
 
@@ -1243,10 +1261,10 @@ def print_selection1():
 # myButton.pack(padx=20)
 headerlabel = tk.Label(root, text="Kenichi Security (Okada)",wraplength=400, justify="left",font=('Helvetica',15)).pack(side=tk.TOP,anchor=tk.NW,padx=20,pady=20)
 tk.ttk.Separator(root, orient='horizontal').pack(fill='x',pady=5)
+input_format = tk.Checkbutton(root, text='Transactional input file',variable=tinputformat, onvalue=1, offvalue=0, command=print_selection2,font=('Helvetica',9))
+input_format.pack(anchor=tk.W,padx=20)
 myButton2 = tk.Button(root, text="Open File",command=openFile,font=('Helvetica',13))
 myButton2.pack(side=tk.TOP, anchor=tk.NW,padx=20,pady=10)
-input_format = tk.Checkbutton(root, text='Transactional input file',variable=tinputformat, onvalue=1, offvalue=0, command=print_selection1,font=('Helvetica',9))
-input_format.pack(anchor=tk.W,padx=20)
 myfilenamelabel = tk.Label(root, text="file:",wraplength=400)
 myfilenamelabel.pack(side=tk.TOP,anchor=tk.NW,padx=20)
 tk.ttk.Separator(root, orient='horizontal').pack(fill='x',pady=5)
