@@ -13,7 +13,7 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning) 
 
 # plt.rcParams.update({'font.size': 22})
-sys_ver = "0.14"
+sys_ver = "0.15"
 root = tk.Tk()
 root.title('Summary Report v'+str(sys_ver))
 root.iconbitmap('summaryreporticon.ico')
@@ -117,7 +117,7 @@ def computeHrs(timein, timeout):
 def billableHrsNew(timein, timeout, shift):
     is_flexi = False
     if isNaN(timein) or isNaN(timeout):
-        return 0
+        return 0,0
     df_sched = db_sched[db_sched['Department'] == shift]
     df_sched = df_sched.reset_index()
     # print(df_sched)
@@ -620,6 +620,7 @@ def generateNewBiMonthlyReport():
         totaldays = 0
         totalhrs_ds = 0
         totalhrs_ns = 0
+        userempty  = True
         for x in days :
             mymonth = datetime.strptime(month_sel,"%b").strftime('%m')
             date = year_sel+"-"+mymonth + "-" +x
@@ -635,6 +636,7 @@ def generateNewBiMonthlyReport():
                         new_row['Total Hours']=df_date['Total Hours'][0]
                         new_row['Billable Hours']=df_date['Billable Hours'][0]
                         new_row['Category']=df_date['Category'][0]
+                        userempty  = False
                         try: 
                             runningtotal = runningtotal + int(new_row['Billable Hours'])
                         except ValueError:
@@ -669,12 +671,13 @@ def generateNewBiMonthlyReport():
             
             # dfmonth = pd.concat([new_row,dfproc.loc[:]]).reset_index(drop=True)
             dfmonth = dfmonth.append(new_row,ignore_index=True)
-        aggr_newrow['Total Hrs'] = totalhrs_ds + totalhrs_ns
-        aggr_newrow['Total Days'] = totaldays
-        aggr_newrow['Total DS Hrs'] = totalhrs_ds
-        aggr_newrow['Total NS Hrs'] = totalhrs_ns
-        aggr_newrow['Total'] = int(aggr_newrow['Total Hrs'])
-        df_aggregated = df_aggregated.append(aggr_newrow,ignore_index=True)
+        if not userempty:
+            aggr_newrow['Total Hrs'] = totalhrs_ds + totalhrs_ns
+            aggr_newrow['Total Days'] = totaldays
+            aggr_newrow['Total DS Hrs'] = totalhrs_ds
+            aggr_newrow['Total NS Hrs'] = totalhrs_ns
+            aggr_newrow['Total'] = int(aggr_newrow['Total Hrs'])
+            df_aggregated = df_aggregated.append(aggr_newrow,ignore_index=True)
         # new_row = pd.DataFrame({'Name':' ','Total Hours':"Total:", 'Billable Hours':runningtotal},index=[0])
         # dfmonth = dfmonth.append(new_row,ignore_index=True)
     # print("change date")
@@ -827,16 +830,19 @@ def generateBiMonthlyReport():
         # df_byname = df[df['EPS'].notna()]
         # print(df_byname)
         runningtotal=0
+        userempty = True
         for x in days :
             mymonth = datetime.strptime(month_sel,"%b").strftime('%m')
             date = year_sel+"-"+mymonth + "-" +x
             # print(date)
             new_row = pd.DataFrame({'Name':index,'Date':date},index=[0])
+
             for cntr, row in df_byname.iterrows():
                 df_date = df_byname[df_byname['Date'] == date]
                 df_date = df_date.reset_index()
                 if not df_date.empty:
                     if len(df_date.index)>=1:
+                        userempty=False
                         new_row['Time In']=df_date['Time In'][0]
                         new_row['Time Out']=df_date['Time Out'][0]
                         new_row['Total Hours']=df_date['Total Hours'][0]
@@ -867,22 +873,25 @@ def generateBiMonthlyReport():
             
             # dfmonth = pd.concat([new_row,dfproc.loc[:]]).reset_index(drop=True)
             dfmonth = dfmonth.append(new_row,ignore_index=True)
-        new_row = pd.DataFrame({'Name':' ','Total Hours':"Total:", 'Billable Hours':runningtotal},index=[0])
-        dfmonth = dfmonth.append(new_row,ignore_index=True)
-        new_row = pd.DataFrame({'Name':' '},index=[0])
-        # new_row = pd.DataFrame(
-        #         {'Name':' ',
-        #         'Employee Number':"-----", 
-        #         'Gender':"-----", 
-        #         'Category':"-----", 
-        #         'Date':"-----", 
-        #         'Day':"-----", 
-        #         'Time In':"-----", 
-        #         'Time Out':"-----", 
-        #         'Total Hours':"-----", 
-        #         'Billable Hours':"-----", 
-        #         'Remarks':"--------"},index=[0])
-        dfmonth = dfmonth.append(new_row,ignore_index=True)
+        if userempty:
+            dfmonth.drop(dfmonth.tail(len(days)).index,inplace=True) # drop last n rows
+        else: 
+            new_row = pd.DataFrame({'Name':' ','Total Hours':"Total:", 'Billable Hours':runningtotal},index=[0])
+            dfmonth = dfmonth.append(new_row,ignore_index=True)
+            new_row = pd.DataFrame({'Name':' '},index=[0])
+            # new_row = pd.DataFrame(
+            #         {'Name':' ',
+            #         'Employee Number':"-----", 
+            #         'Gender':"-----", 
+            #         'Category':"-----", 
+            #         'Date':"-----", 
+            #         'Day':"-----", 
+            #         'Time In':"-----", 
+            #         'Time Out':"-----", 
+            #         'Total Hours':"-----", 
+            #         'Billable Hours':"-----", 
+            #         'Remarks':"--------"},index=[0])
+            dfmonth = dfmonth.append(new_row,ignore_index=True)
     # print("change date")
     # for index, row in dfmonth.iterrows():
     #     row['Date'] = datetime.strptime(str(row['Date']),'%Y-%m-%d').strftime('%b %d, %Y')
