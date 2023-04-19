@@ -13,7 +13,7 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning) 
 
 # plt.rcParams.update({'font.size': 22})
-sys_ver = "0.15"
+sys_ver = "0.16"
 root = tk.Tk()
 root.title('Summary Report v'+str(sys_ver))
 root.iconbitmap('summaryreporticon.ico')
@@ -160,13 +160,13 @@ def billableHrsNew(timein, timeout, shift):
     late = 0
     if inhr>=(df_sched['Day Shift In'][0] - 2) and inhr<(df_sched['Day Shift In'][0] + 1):
         outputshift = 1 #am shift
-        if inhr==(df_sched['Day Shift In'][0] + 1) and inmin>15 and inmin<=59:
+        if inhr==(df_sched['Day Shift In'][0] ) and inmin>0 and inmin<=59:
             late = 1
         else:
             late = 0
     elif inhr>=(df_sched['Night Shift In'][0] - 2) and inhr<(df_sched['Night Shift In'][0] + 1):
         outputshift = 0 #pm shift
-        if inhr==(df_sched['Night Shift In'][0] + 1) and inmin>15 and inmin<=59:
+        if inhr==(df_sched['Night Shift In'][0] ) and inmin>0 and inmin<=59:
             late = 1
         else:
             late = 0
@@ -180,8 +180,12 @@ def billableHrsNew(timein, timeout, shift):
         conv_shiftin = str(int(df_sched['Night Shift In'][0]))+":00:00"
     
     outdif = computeHrs(conv_shiftin,timeout)
+    # if outdif == 0.62:
+    # print(outdif,conv_shiftin,timeout)
     
-    if outdif >=12:
+    if outdif>17: #hot fix
+        outputhrs =  0
+    elif outdif >=12  and  outdif<17:
         outputhrs = 12 - late
     elif outdif>=6 and outdif<12:
         outputhrs = 6 - late
@@ -552,9 +556,15 @@ def generateNewBiMonthlyReport():
         # billablehrs = billableHrs(row['Time In'],row['Time Out'])
         # row['Total Hours']=myhrs
         # row['Billable Hours']=billablehrs
+        if len(df_new)==0:
+            # print("drop {} (not in db)".format(row['Name']))
+            listtodrop.append(index)
+
         if isNaN(row['Time In']) or isNaN(row['Time Out']) or row['Time In']==' 'or row['Time Out']==' ':
             listtodrop.append(index)
+            # print("drop {} (invalid time)".format(row['Name']))
             # continue
+    dfproc = dfproc.drop(listtodrop)
 
     col = dfproc.pop("Department")
     dfproc.insert(3,"Category",col)
@@ -746,6 +756,8 @@ def generateBiMonthlyReport():
             #     print(row)
         
             # continue
+            # if "ABAINZA" in row['Name']:
+            #     print(row['Name'],row['Time In'],row['Time Out'],row['Department'],myhrs,billablehrsnew)
 
     
     dfproc = dfproc.reset_index()
@@ -765,6 +777,8 @@ def generateBiMonthlyReport():
         if df_new.empty:
             row['Gender'] = " "
             row['Staff No'] = ""
+            # print("dropping {} (not in card list)".format(row['Name']))
+            listtodrop.append(index)
         else:
             row['Gender']=df_new['Gender'][0]
             row['Staff No'] = df_new['Staff No'][0]
@@ -777,11 +791,15 @@ def generateBiMonthlyReport():
         # row['Billable Hours']=billablehrs
         # if not str(row['Billable Hours']).isdigit():
         #     print(row)
+        # if len(df_new)==0:
+        #     print("drop {} (not in db)".format(row['Name']))
+        #     listtodrop.append(index)
         if isNaN(row['Time In']) or isNaN(row['Time Out']) or row['Time In']==' ' or row['Time Out']==' ' or not str(row['Billable Hours']).isdigit():
             listtodrop.append(index)
+            # print("dropping {} (invalid time)".format(row['Name']))
             # continue
-    # print(listtodrop)
-    # dfproc = dfproc.drop(listtodrop)
+    print(listtodrop)
+    dfproc = dfproc.drop(listtodrop)
 
     col = dfproc.pop("Card No")
     dfproc.insert(1,"Employee Number",col)
