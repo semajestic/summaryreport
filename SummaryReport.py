@@ -13,7 +13,7 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning) 
 
 # plt.rcParams.update({'font.size': 22})
-sys_ver = "0.16"
+sys_ver = "0.17"
 root = tk.Tk()
 root.title('Summary Report v'+str(sys_ver))
 root.iconbitmap('summaryreporticon.ico')
@@ -390,6 +390,7 @@ def openTransactionalFile():
     prevname = ""
     prevtrans = ""
     prevdate = ""
+    prevtime = ""
     total = len(df.index)
     dfproc = pd.DataFrame(columns=["Date","Department","Card No","Name","Staff No","Time In","Time Out"])
     for index,row in df.iterrows():
@@ -435,8 +436,12 @@ def openTransactionalFile():
                         # new data row
                         pass
                     else:
-                        dfproc.loc[dfproc.index[-1], 'Time Out'] = row['Time']
-                        pass
+                        if computeHrs(row['Time'], prevtime) <= 2:#if time diff is not >2hrs from previous time out
+                            dfproc.loc[dfproc.index[-1], 'Time Out'] = row['Time']
+                        else:
+                            # apnd_newrow = pd.DataFrame({'Date':row['Date'],'Name':row['Name'],'Time Out':row['Time'],'Department':mydept,'Card No':row['Card No'],'Staff No':row['Staff No']},index=[0])
+                            # dfproc = dfproc.append(apnd_newrow,ignore_index=True)
+                            pass
 
         # aggr_newrow = pd.DataFrame({'Name':index},index=[0])
         # aggr_newrow['Total'] = int(aggr_newrow['Total Hrs'])
@@ -447,7 +452,7 @@ def openTransactionalFile():
         #if old name, trans  is exit to entry   : new row
         #if old name, old trans, 
 
-
+        prevtime = row['Time']
         prevname = row['Name']
         prevtrans = row['Transaction']
         prevdate = row['Date']
@@ -612,6 +617,8 @@ def generateNewBiMonthlyReport():
     print(df_aggregated)
     total = len(listnames)
     totcnt = 0
+    # totalsrow = pd.DataFrame({'Name':index},index=[0])
+
     for index in listnames:
         # print("ind:{} row:{}".format(index,cntr))
         statustext = "status: Processing data...("+str(totcnt)+"/"+str(total)+")"
@@ -636,8 +643,17 @@ def generateNewBiMonthlyReport():
             date = year_sel+"-"+mymonth + "-" +x
             # print(date)
             new_row = pd.DataFrame({'Name':index,'Date':date},index=[0])
+            # if df_byname.empty:
+            #     print("EMTIII")
+            #     # continue
             for cntr, row in df_byname.iterrows():
+                
                 df_date = df_byname[df_byname['Date'] == date]
+                # print(df_date)
+                # print("-------")
+                df_date = df_date.sort_values(by=["Billable Hours"],ascending=False)
+                # print(df_date)
+                # print("=======")
                 df_date = df_date.reset_index()
                 if not df_date.empty:
                     if len(df_date.index)>=1:
@@ -663,7 +679,9 @@ def generateNewBiMonthlyReport():
                             totaldays = totaldays + 1
                         except ValueError:
                             print("[ERR RUNNINGTOT] index: {}")
-
+                        
+                        if len(df_date.index)>1:
+                            print(len(df_date.index))
                         break
                     # if len(df_date.index)>1:
                     #     if (not isNan(row['Time In'])) and (not isNan(row['Time Out'])):
@@ -857,6 +875,7 @@ def generateBiMonthlyReport():
 
             for cntr, row in df_byname.iterrows():
                 df_date = df_byname[df_byname['Date'] == date]
+                df_date = df_date.sort_values(by=["Billable Hours"],ascending=False)
                 df_date = df_date.reset_index()
                 if not df_date.empty:
                     if len(df_date.index)>=1:
@@ -874,6 +893,10 @@ def generateBiMonthlyReport():
                         except ValueError:
                             print("[ERR RUNNINGTOT] index: {}")
                             # print(new_row)
+
+                        if len(df_date.index)>1:
+                            print(len(df_date.index))
+
                         break
                     # if len(df_date.index)>1:
                     #     if (not isNan(row['Time In'])) and (not isNan(row['Time Out'])):
