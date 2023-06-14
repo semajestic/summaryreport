@@ -4,6 +4,7 @@ from tkinter import filedialog as fd
 from tkinter.messagebox import showinfo
 # import openpyxl
 import matplotlib.pyplot as plt
+import matplotlib.patheffects as pe
 from matplotlib.backends.backend_pdf import PdfPages
 import pandas as pd
 import os,sys
@@ -13,7 +14,7 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning) 
 
 # plt.rcParams.update({'font.size': 22})
-sys_ver = "0.17"
+sys_ver = "0.18"
 root = tk.Tk()
 root.title('Summary Report v'+str(sys_ver))
 root.iconbitmap('summaryreporticon.ico')
@@ -523,7 +524,7 @@ def generateNewBiMonthlyReport():
     #     row['is_DS'] = billablehrsnew[1]
 
     for index, row in dfproc.iterrows():
-        
+        root.update()
         # print("index:{} row:{}".format(index,row))
         if isNaN(row['Time In']) or isNaN(row['Time Out']):
             # listtodrop.append(index)
@@ -550,6 +551,7 @@ def generateNewBiMonthlyReport():
     dfproc['Day'] = " "
     listtodrop = []
     for index, row in dfproc.iterrows():
+        root.update()
         # df_new = db[db['Card N°.'] == row['Card No']]
         df_new = db[db['Name'] == row['Name']]
         df_new = df_new.reset_index()
@@ -602,12 +604,24 @@ def generateNewBiMonthlyReport():
     print(days)
     # df_aggregated = pd.DataFrame
     # df_aggregated["Name"]=""
+    totals_row = pd.DataFrame({'Name':""},index=[0])
     aggr_columns = ["Name"]
     for items in days:
         title = str(items) + " ds"
         aggr_columns.append(title)
+        # totals_row.append(title)
+        totals_row[title] = 0
         title = str(items) + " ns"
         aggr_columns.append(title)
+        totals_row[title] = 0
+    totals_row["Total Hrs"] = 0
+    totals_row["Total Days"] = 0
+    totals_row["Total DS Hrs"] = 0
+    totals_row["Total NS Hrs"] = 0
+    totals_row["Total"] = 0
+    print("totrow")
+    print(totals_row)
+    
     aggr_columns.append("Total Hrs")
     aggr_columns.append("Total Days")
     aggr_columns.append("Total DS Hrs")
@@ -673,10 +687,16 @@ def generateNewBiMonthlyReport():
                             if int(df_date['is_DS'][0])==1:
                                 aggr_newrow[str(x)+" ds"] = df_date['Billable Hours'][0]
                                 totalhrs_ds = totalhrs_ds + int(df_date['Billable Hours'][0])
+                                if int(df_date['Billable Hours'][0])>0:
+                                    totals_row[str(x)+" ds"] = totals_row[str(x)+" ds"] +1
+                                    totaldays = totaldays + 1
                             elif int(df_date['is_DS'][0])==0:
                                 aggr_newrow[str(x)+" ns"] = df_date['Billable Hours'][0]
                                 totalhrs_ns = totalhrs_ns + int(df_date['Billable Hours'][0])
-                            totaldays = totaldays + 1
+                                if int(df_date['Billable Hours'][0])>0:
+                                    totals_row[str(x)+" ns"] = totals_row[str(x)+" ns"] +1
+                                    totaldays = totaldays + 1
+                            # totaldays = totaldays + 1
                         except ValueError:
                             print("[ERR RUNNINGTOT] index: {}")
                         
@@ -701,17 +721,22 @@ def generateNewBiMonthlyReport():
             dfmonth = dfmonth.append(new_row,ignore_index=True)
         if not userempty:
             aggr_newrow['Total Hrs'] = totalhrs_ds + totalhrs_ns
+            totals_row["Total Hrs"] += aggr_newrow['Total Hrs']
             aggr_newrow['Total Days'] = totaldays
+            totals_row["Total Days"] += aggr_newrow['Total Days']
             aggr_newrow['Total DS Hrs'] = totalhrs_ds
+            totals_row["Total DS Hrs"] += aggr_newrow['Total DS Hrs']
             aggr_newrow['Total NS Hrs'] = totalhrs_ns
+            totals_row["Total NS Hrs"] += aggr_newrow['Total NS Hrs']
             aggr_newrow['Total'] = int(aggr_newrow['Total Hrs'])
+            totals_row["Total"] += aggr_newrow['Total']
             df_aggregated = df_aggregated.append(aggr_newrow,ignore_index=True)
         # new_row = pd.DataFrame({'Name':' ','Total Hours':"Total:", 'Billable Hours':runningtotal},index=[0])
         # dfmonth = dfmonth.append(new_row,ignore_index=True)
     # print("change date")
     # for index, row in dfmonth.iterrows():
     #     row['Date'] = datetime.strptime(str(row['Date']),'%Y-%m-%d').strftime('%b %d, %Y')
-    
+    df_aggregated = df_aggregated.append(totals_row,ignore_index=True)
     dfmonth = dfmonth.fillna('')
     df_aggregated = df_aggregated.fillna('')
 
@@ -1112,10 +1137,12 @@ def saveXlsx(dfproc,reporttype):
     writer = pd.ExcelWriter(filename_out.name, engine='xlsxwriter')
     # dfproc = dfproc.style.applymap(lambda x: "border-style: hair; border-color: black")
     if reporttype==3:
-        dfproc.to_excel(writer,startrow=1,index=False, sheet_name='Sheet1')
+        dfproc.to_excel(writer,startrow=2,index=False, sheet_name='Sheet1')
         # worksheet = writer.sheets['Sheet1']
         title = "PERIOD: "+month_sel+" "+cutoff_sel+", "+year_sel
         writer.sheets['Sheet1'].write(0,0,title)
+        title1 = "GENERATED: "+now.strftime("%b-%d-%Y")
+        writer.sheets['Sheet1'].write(1,0,title1)
         # writer.save()
     else:
         dfproc.to_excel(writer,index=False, sheet_name='Sheet1')
@@ -1286,6 +1313,40 @@ def savePdflandscape(dfproc,reporttype):
         # the_table[0, col]._text.set_horizontalalignment('left') 
         
         pp.savefig(fig, bbox_inches='tight')
+
+    if  True:
+
+        fig, ax =plt.subplots(figsize=(11,8.5))
+        ax.set_title(figtitle,fontsize=10)
+        # ax.axis('tight')
+        # ax.axis('off')
+        num_boxes = 4
+        x_start = 0#.001
+        box_width = (1 - (num_boxes - 1) * 0.1) / num_boxes
+        y = 0.45
+        y1 = 0.6
+        y2 = 0.42
+        box_height = 0.2
+        box_spacing = 0.13
+        box_titles = ['Chistianne Kuizon', 'Arenel Abella', 'Roel Lumabao', 'PBGEN Thomas R. Fias jr. (Ret)']
+        box_titles1 = ['Prepared by:', 'Checked by:', 'Noted by:', 'Approved by:']
+        box_titles2 = ["General Manager","Admin, External Security Opeerations","External Security Operations Manager","Director Physical Security/SSD"]
+
+        # Add the boxes and titles
+        for i in range(num_boxes):
+            x = x_start + (box_width + box_spacing) * i
+            # ax.plot([x_start, x_start+0.1], [y1, y1], color='black')
+            ax.text(x, y1, '', bbox=dict(boxstyle='square', facecolor='white', edgecolor='black', linewidth=1))
+            ax.text(x + box_width / 2, y1 + box_height / 2, box_titles1[i]+"      ", ha='right', va='top', fontsize=7)
+            ax.text(x, y, '', bbox=dict(boxstyle='square', facecolor='white', edgecolor='black', linewidth=1))
+            ax.text(x + box_width / 2, y + box_height / 2, box_titles[i], ha='center', va='center', fontsize=7)
+            ax.text(x, y2, '', bbox=dict(boxstyle='square', facecolor='white', edgecolor='black', linewidth=1))
+            ax.text(x + box_width / 2, y2 + box_height / 2, box_titles2[i], ha='center', va='center', fontsize=7, weight='bold')
+            # ax.plot([x, x + box_width], [y+0.3,y+0.3], color='black')
+            # line = ax.plot([0.3, 0.7], [0.4, 0.4], color='black')
+            ax.axis('off')
+        pp.savefig()
+    
     pp.close()
     pdflabel.config(text='pdf: '+filename_out.name)
     statustext = "status: Created PDF..."
