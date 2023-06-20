@@ -14,7 +14,7 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning) 
 
 # plt.rcParams.update({'font.size': 22})
-sys_ver = "0.18"
+sys_ver = "0.20"
 root = tk.Tk()
 root.title('Summary Report v'+str(sys_ver))
 root.iconbitmap('summaryreporticon.ico')
@@ -1328,9 +1328,9 @@ def savePdflandscape(dfproc,reporttype):
         y2 = 0.42
         box_height = 0.2
         box_spacing = 0.13
-        box_titles = ['Chistianne Kuizon', 'Arenel Abella', 'Roel Lumabao', 'PBGEN Thomas R. Fias jr. (Ret)']
+        box_titles = ['Chistianne Kuizon', 'Arnel Abella', 'Roel Lumabao', 'PBGEN THOMAS R. FRIAS JR. (Ret)']
         box_titles1 = ['Prepared by:', 'Checked by:', 'Noted by:', 'Approved by:']
-        box_titles2 = ["General Manager","Admin, External Security Opeerations","External Security Operations Manager","Director Physical Security/SSD"]
+        box_titles2 = ["General Manager","Admin, External Security Operations","External Security Operations Manager","Director Physical Security/SSD"]
 
         # Add the boxes and titles
         for i in range(num_boxes):
