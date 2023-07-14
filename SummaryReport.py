@@ -14,7 +14,7 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning) 
 
 # plt.rcParams.update({'font.size': 22})
-sys_ver = "0.20"
+sys_ver = "0.21"
 root = tk.Tk()
 root.title('Summary Report v'+str(sys_ver))
 root.iconbitmap('summaryreporticon.ico')
@@ -435,14 +435,16 @@ def openTransactionalFile():
                     # 
                     if row['Date'] != prevdate:
                         # new data row
-                        pass
+                        apnd_newrow = pd.DataFrame({'Date':row['Date'],'Name':row['Name'],'Time Out':row['Time'],'Department':mydept,'Card No':row['Card No'],'Staff No':row['Staff No']},index=[0])
+                        dfproc = dfproc.append(apnd_newrow,ignore_index=True)
+                        # pass
                     else:
                         if computeHrs(row['Time'], prevtime) <= 2:#if time diff is not >2hrs from previous time out
                             dfproc.loc[dfproc.index[-1], 'Time Out'] = row['Time']
                         else:
-                            # apnd_newrow = pd.DataFrame({'Date':row['Date'],'Name':row['Name'],'Time Out':row['Time'],'Department':mydept,'Card No':row['Card No'],'Staff No':row['Staff No']},index=[0])
-                            # dfproc = dfproc.append(apnd_newrow,ignore_index=True)
-                            pass
+                            apnd_newrow = pd.DataFrame({'Date':row['Date'],'Name':row['Name'],'Time Out':row['Time'],'Department':mydept,'Card No':row['Card No'],'Staff No':row['Staff No']},index=[0])
+                            dfproc = dfproc.append(apnd_newrow,ignore_index=True)
+                            # pass
 
         # aggr_newrow = pd.DataFrame({'Name':index},index=[0])
         # aggr_newrow['Total'] = int(aggr_newrow['Total Hrs'])
