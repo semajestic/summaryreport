@@ -14,7 +14,7 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning) 
 
 # plt.rcParams.update({'font.size': 22})
-sys_ver = "0.21"
+sys_ver = "0.22"
 root = tk.Tk()
 root.title('Summary Report v'+str(sys_ver))
 root.iconbitmap('summaryreporticon.ico')
@@ -33,14 +33,39 @@ def top_destroyer():
 top = tk.Toplevel() #Creates the toplevel window
 top.geometry("400x600")
 # top.protocol("WM_DELETE_WINDOW", top_destroyer)
-headerlabel = tk.Label(top, text="Kenichi Security (Okada)",wraplength=400, justify="left",font=('Helvetica',15)).pack(side=tk.TOP,anchor=tk.NW,padx=20,pady=20)
+headerlabel = tk.Label(top, text="Security Agency Time Reports Login",wraplength=400, justify="left",font=('Helvetica',15)).pack(side=tk.TOP,anchor=tk.NW,padx=20,pady=20)
 tk.ttk.Separator(top, orient='horizontal').pack(fill='x',pady=5)
 tk.Label(top, text="User Login",wraplength=400, justify="left",font=('Helvetica',13)).pack(side=tk.TOP,anchor=tk.NW,padx=20,pady=20)
+userlogin = ""
 
 def command1():
+    global userlogin,db
+    dbsheetlist = dbsheets.keys()
+    print(dbsheetlist)
+    
     if entry1.get() == "junjun" and entry2.get() == "avelino12345": #Checks whether username and password are correct
-        root.deiconify() #Unhides the root window
-        top.destroy() #Removes the toplevel window
+        userlogin = "KENICHI"
+    elif entry1.get() == "qrt" and entry2.get() == "avelino12345": #Checks whether username and password are correct
+        userlogin = "QRT"
+    elif entry1.get() == "Sniffer" and entry2.get() == "5n1ff3r": #Checks whether username and password are correct
+        userlogin = "SNIFFER K9"
+    elif entry1.get() == "Nesa" and entry2.get() == "n354": #Checks whether username and password are correct
+        userlogin = "NESA"
+    elif entry1.get() == "Advance" and entry2.get() == "4dv4nc3": #Checks whether username and password are correct
+        userlogin = "ADVANCE"
+    else:
+        return
+    
+    if userlogin in dbsheetlist:
+        db = pd.read_excel(db_filename,sheet_name=userlogin)
+    else:
+        return
+    
+    root.deiconify() #Unhides the root window
+    top.destroy() #Removes the toplevel window
+    
+    rootheaderlabel.config(text=userlogin)
+    root.update()
 
 def command2():
     top.destroy() #Removes the toplevel window
@@ -81,9 +106,11 @@ tinputformat=tk.IntVar(value=0)
 
 db_filename = "CARD USER I.D LIST 2.xlsx"
 if (os.path.isfile(db_filename)):
-    db = pd.read_excel(db_filename,sheet_name='Sheet')
+    dbsheets =  pd.read_excel(db_filename,None)
+    print(dbsheets.keys())
+    # db = pd.read_excel(db_filename,sheet_name='Sheet')
     db_sched = pd.read_excel(db_filename,sheet_name='Schedules')
-    print(db)
+    # print(db)s
     print(db_sched)
 else:
     mylabel = tk.Label(root, text="cannot find file: CARD USER I.D LIST 2.xlsx",wraplength=400)
@@ -1163,13 +1190,13 @@ def savePdf(dfproc,reporttype):
     now = datetime.now()
     if reporttype==0:
         initfile = "SummaryDailyReport_"+now.strftime("%d-%m-%Y")
-        figtitle = "Kenichi Security (Okada)\nDaily Time & Attendance "+now.strftime("%d-%m-%Y")+"\n"
+        figtitle = userlogin + " Security\nDaily Time & Attendance "+now.strftime("%d-%m-%Y")+"\n"
     elif reporttype==1:
         initfile = "SummaryBiMonthlyReport_"+now.strftime("%d-%m-%Y")
         month_sel = monthvariable.get()
         cutoff_sel = cutoffvariable.get()
         year_sel = yearvariable.get()
-        figtitle = "Kenichi Security (Okada)\nBimonthly Billing Covering "+month_sel
+        figtitle = userlogin + " Security\nBimonthly Billing Covering "+month_sel
         # print("mo:{} cutoff:{} yr:{}".format(month_sel,cutoff_sel,year_sel))
         if cutoff_sel =="1-15":
             figtitle += " 1-15, "+year_sel+"\n"
@@ -1185,7 +1212,7 @@ def savePdf(dfproc,reporttype):
                     figtitle += " 16-28, "+year_sel+"\n"
     elif reporttype==2:
         initfile = "SummaryPEZAReport_"+now.strftime("%d-%m-%Y")
-        figtitle = "Kenichi Security (Okada)\nPEZA Report as of "+now.strftime("%d-%m-%Y")+"\n"
+        figtitle = userlogin + " Security\nPEZA Report as of "+now.strftime("%d-%m-%Y")+"\n"
     filename_out=fd.asksaveasfile(mode='w',defaultextension=".pdf",initialfile=initfile,filetypes=(("PDF file", "*.pdf"),("All Files", "*.*")))
     print(filename_out.name)
     statustext = "status: Creating PDF..."
@@ -1237,7 +1264,7 @@ def savePdflandscape(dfproc,reporttype):
     year_sel = yearvariable.get()
 
     initfile = "SummaryAggregatedBiMonthlyReport_"+month_sel
-    figtitle = "Kenichi Security (Okada)\nAggregated Bimonthly Billing Covering "+month_sel
+    figtitle = userlogin + " Security\nAggregated Bimonthly Billing Covering "+month_sel
     # print("mo:{} cutoff:{} yr:{}".format(month_sel,cutoff_sel,year_sel))
     if cutoff_sel =="1-15":
         figtitle += " 1-15, "+year_sel+"\n"
@@ -1372,7 +1399,9 @@ def print_selection2():
 
 # myButton = tk.Button(root, text="Enter naym",command=myClick)
 # myButton.pack(padx=20)
-headerlabel = tk.Label(root, text="Kenichi Security (Okada)",wraplength=400, justify="left",font=('Helvetica',15)).pack(side=tk.TOP,anchor=tk.NW,padx=20,pady=20)
+# root.update()
+rootheaderlabel = tk.Label(root, text="Agency ",wraplength=400, justify="left",font=('Helvetica',15))
+rootheaderlabel.pack(side=tk.TOP,anchor=tk.NW,padx=20,pady=20)
 tk.ttk.Separator(root, orient='horizontal').pack(fill='x',pady=5)
 input_format = tk.Checkbutton(root, text='Transactional input file',variable=tinputformat, onvalue=1, offvalue=0, command=print_selection2,font=('Helvetica',9))
 input_format.pack(anchor=tk.W,padx=20)
