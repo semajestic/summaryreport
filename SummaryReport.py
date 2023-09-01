@@ -14,7 +14,7 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning) 
 
 # plt.rcParams.update({'font.size': 22})
-sys_ver = "0.22"
+sys_ver = "0.23"
 root = tk.Tk()
 root.title('Summary Report v'+str(sys_ver))
 root.iconbitmap('summaryreporticon.ico')
@@ -51,8 +51,8 @@ def command1():
         userlogin = "SNIFFER K9"
     elif entry1.get() == "Nesa" and entry2.get() == "n354": #Checks whether username and password are correct
         userlogin = "NESA"
-    elif entry1.get() == "Advance" and entry2.get() == "4dv4nc3": #Checks whether username and password are correct
-        userlogin = "ADVANCE"
+    elif entry1.get() == "Advanced" and entry2.get() == "4dv4nc3d": #Checks whether username and password are correct
+        userlogin = "ADVANCED"
     else:
         return
     
@@ -1103,6 +1103,7 @@ def generateDailyReport():
         if df_new.empty:
             row['Gender'] = " "
             row['Staff No'] = ""
+            listtodrop.append(index)
         else:
             row['Gender']=df_new['Gender'][0]
             row['Staff No'] = df_new['Staff No'][0]
@@ -1110,6 +1111,7 @@ def generateDailyReport():
         myday = datetime.strptime(row['Date'],'%Y-%m-%d').strftime('%a')
         row['Date'] = datetime.strptime(row['Date'],'%Y-%m-%d').strftime('%b %d, %Y')
         row['Day']=myday
+    dfproc = dfproc.drop(listtodrop)
     col = dfproc.pop("Card No")
     #dfproc.insert(1,"Employee Number",col)
     col = dfproc.pop("Gender")
@@ -1357,9 +1359,22 @@ def savePdflandscape(dfproc,reporttype):
         y2 = 0.42
         box_height = 0.2
         box_spacing = 0.13
-        box_titles = ['Chistianne Kuizon', 'Arnel Abella', 'Roel Lumabao', 'PBGEN THOMAS R. FRIAS JR. (Ret)']
+        
         box_titles1 = ['Prepared by:', 'Checked by:', 'Noted by:', 'Approved by:']
-        box_titles2 = ["General Manager","Admin, External Security Operations","External Security Operations Manager","Director Physical Security/SSD"]
+
+        if userlogin == "SNIFFER K9":
+            box_titles = ['Christopher Monderin', 'Arnel Abella', 'Roel Lumabao', 'PBGEN THOMAS R. FRIAS JR. (Ret)']
+            box_titles2 = ["Operations Manager","Admin, External Security Operations","External Security Operations Manager","Director Physical Security/SSD"]
+        elif userlogin == "NESA": 
+            box_titles = ['Christopher Monderin', 'Arnel Abella', 'Roel Lumabao', 'PBGEN THOMAS R. FRIAS JR. (Ret)']
+            box_titles2 = ["Operations Manager","Admin, External Security Operations","External Security Operations Manager","Director Physical Security/SSD"]
+        elif userlogin == "ADVANCED":
+            box_titles = ['John Steve Leonardo', 'Arnel Abella', 'Roel Lumabao', 'PBGEN THOMAS R. FRIAS JR. (Ret)']
+            box_titles2 = ["Operations Manager","Admin, External Security Operations","External Security Operations Manager","Director Physical Security/SSD"]
+        else:
+            box_titles = ['Chistianne Kuizon', 'Arnel Abella', 'Roel Lumabao', 'PBGEN THOMAS R. FRIAS JR. (Ret)']
+            box_titles2 = ["General Manager","Admin, External Security Operations","External Security Operations Manager","Director Physical Security/SSD"]
+        
 
         # Add the boxes and titles
         for i in range(num_boxes):
