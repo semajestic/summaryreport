@@ -14,7 +14,7 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning) 
 
 # plt.rcParams.update({'font.size': 22})
-sys_ver = "0.23"
+sys_ver = "0.24"
 root = tk.Tk()
 root.title('Summary Report v'+str(sys_ver))
 root.iconbitmap('summaryreporticon.ico')
@@ -1190,9 +1190,10 @@ def saveXlsx(dfproc,reporttype):
 def savePdf(dfproc,reporttype):
 
     now = datetime.now()
+    pagestr = ""
     if reporttype==0:
         initfile = "SummaryDailyReport_"+now.strftime("%d-%m-%Y")
-        figtitle = userlogin + " Security\nDaily Time & Attendance "+now.strftime("%d-%m-%Y")+"\n"
+        figtitle = userlogin + " Security\nDaily Time & Attendance "+now.strftime("%d-%m-%Y")
     elif reporttype==1:
         initfile = "SummaryBiMonthlyReport_"+now.strftime("%d-%m-%Y")
         month_sel = monthvariable.get()
@@ -1214,21 +1215,22 @@ def savePdf(dfproc,reporttype):
                     figtitle += " 16-28, "+year_sel+"\n"
     elif reporttype==2:
         initfile = "SummaryPEZAReport_"+now.strftime("%d-%m-%Y")
-        figtitle = userlogin + " Security\nPEZA Report as of "+now.strftime("%d-%m-%Y")+"\n"
+        figtitle = userlogin + " Security\nPEZA Report as of "+now.strftime("%d-%m-%Y")
     filename_out=fd.asksaveasfile(mode='w',defaultextension=".pdf",initialfile=initfile,filetypes=(("PDF file", "*.pdf"),("All Files", "*.*")))
     print(filename_out.name)
     statustext = "status: Creating PDF..."
     statuslabel.config(text=statustext)
     dfproc = dfproc.rename({'USER ID':'User ID','Staff No':'Employee\nNumber','Employee Number':'Employee\nNumber', 'Total Hours':'Total\nHours', 'Billable Hours':'Billable\nHours'},axis=1)
-    groups = dfproc.groupby(np.arange(len(dfproc.index))//50)
+    groups = dfproc.groupby(np.arange(len(dfproc.index))//45)
     pp = PdfPages(filename_out.name)
     
     for (frameno, frame) in groups:    
-        statustext = "status: Creating PDF...("+str(frameno)+"/"+str(groups.ngroups)+")"
+        statustext = "status: Creating PDF...("+str(frameno+1)+"/"+str(groups.ngroups)+")"
         statuslabel.config(text=statustext)
         root.update()
         fig, ax =plt.subplots(figsize=(8.5,11))
-        ax.set_title(figtitle,fontsize=10)
+        titlewpage = figtitle+" (page "+str(frameno+1)+"/"+str(groups.ngroups)+")"
+        ax.set_title(titlewpage,fontsize=10)
         ax.axis('tight')
         ax.axis('off')
         if reporttype==2:
@@ -1294,16 +1296,21 @@ def savePdflandscape(dfproc,reporttype):
     print(filename_out.name)
     statustext = "status: Creating PDF..."
     statuslabel.config(text=statustext)
-    dfproc = dfproc.rename({'USER ID':'User ID','Staff No':'Employee\nNumber','Employee Number':'Employee\nNumber', 'Total Hours':'Total\nHours', 'Billable Hours':'Billable\nHours'},axis=1)
-    groups = dfproc.groupby(np.arange(len(dfproc.index))//50)
+    # 'index':' ',
+        # dfproc['i'] = dfproc.index
+    dfproc.index = np.arange(1, len(dfproc) + 1)
+    dfproc=dfproc.reset_index()
+    dfproc = dfproc.rename({'index':' ','USER ID':'User ID','Staff No':'Employee\nNumber','Employee Number':'Employee\nNumber', 'Total Hours':'Total\nHours', 'Billable Hours':'Billable\nHours'},axis=1)
+    groups = dfproc.groupby(np.arange(len(dfproc.index))//45)
     pp = PdfPages(filename_out.name)
     
     for (frameno, frame) in groups:    
-        statustext = "status: Creating PDF...("+str(frameno)+"/"+str(groups.ngroups)+")"
+        statustext = "status: Creating PDF...("+str(frameno+1)+"/"+str(groups.ngroups+1)+")"
         statuslabel.config(text=statustext)
         root.update()
         fig, ax =plt.subplots(figsize=(11,8.5))
-        ax.set_title(figtitle,fontsize=10)
+        titlewpage = figtitle+" (page "+str(frameno+1)+"/"+str(groups.ngroups+1)+")"
+        ax.set_title(titlewpage,fontsize=10)
         ax.axis('tight')
         ax.axis('off')
         # if numofdays==13:
@@ -1318,7 +1325,7 @@ def savePdflandscape(dfproc,reporttype):
         #     print(data)
         # else:
         #     mycolwidth=[]
-        mycolwidth=[.18]
+        mycolwidth=[0.025,.18]
         cntr = 0
         for x in range(0,numofdays*2):
             mycolwidth.append(.025)
@@ -1348,7 +1355,8 @@ def savePdflandscape(dfproc,reporttype):
     if  True:
 
         fig, ax =plt.subplots(figsize=(11,8.5))
-        ax.set_title(figtitle,fontsize=10)
+        titlewpage = figtitle+" (page "+str(groups.ngroups+1)+"/"+str(groups.ngroups+1)+")"
+        ax.set_title(titlewpage,fontsize=10)
         # ax.axis('tight')
         # ax.axis('off')
         num_boxes = 4
