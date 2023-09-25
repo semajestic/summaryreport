@@ -14,7 +14,7 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning) 
 
 # plt.rcParams.update({'font.size': 22})
-sys_ver = "0.24"
+sys_ver = "0.25"
 root = tk.Tk()
 root.title('Summary Report v'+str(sys_ver))
 root.iconbitmap('summaryreporticon.ico')
@@ -47,12 +47,18 @@ def command1():
         userlogin = "KENICHI"
     elif entry1.get() == "qrt" and entry2.get() == "avelino12345": #Checks whether username and password are correct
         userlogin = "QRT"
+    elif entry1.get() == "Construction" and entry2.get() == "avelino12345": #Checks whether username and password are correct
+        userlogin = "CONSTRUCTION"
     elif entry1.get() == "Sniffer" and entry2.get() == "5n1ff3r": #Checks whether username and password are correct
         userlogin = "SNIFFER K9"
     elif entry1.get() == "Nesa" and entry2.get() == "n354": #Checks whether username and password are correct
         userlogin = "NESA"
     elif entry1.get() == "Advanced" and entry2.get() == "4dv4nc3d": #Checks whether username and password are correct
         userlogin = "ADVANCED"
+    elif entry1.get() == "Jkk" and entry2.get() == "jkk12345": #Checks whether username and password are correct
+        userlogin = "JKK"
+    elif entry1.get() == "8arms" and entry2.get() == "84rm5": #Checks whether username and password are correct
+        userlogin = "8ARMS"
     else:
         return
     
@@ -1379,8 +1385,14 @@ def savePdflandscape(dfproc,reporttype):
         elif userlogin == "ADVANCED":
             box_titles = ['John Steve Leonardo', 'Arnel Abella', 'Roel Lumabao', 'PBGEN THOMAS R. FRIAS JR. (Ret)']
             box_titles2 = ["Operations Manager","Admin, External Security Operations","External Security Operations Manager","Director Physical Security/SSD"]
+        elif userlogin == "8ARMS":
+            box_titles = ['John Steve Leonardo', 'Arnel Abella', 'Roel Lumabao', 'PBGEN THOMAS R. FRIAS JR. (Ret)']
+            box_titles2 = ["Operations Manager","Admin, External Security Operations","External Security Operations Manager","Director Physical Security/SSD"]
+        elif userlogin == "JKK":
+            box_titles = ['                   ', 'Arnel Abella', 'Roel Lumabao', 'PBGEN THOMAS R. FRIAS JR. (Ret)']
+            box_titles2 = ["Operations Manager","Admin, External Security Operations","External Security Operations Manager","Director Physical Security/SSD"]
         else:
-            box_titles = ['Chistianne Kuizon', 'Arnel Abella', 'Roel Lumabao', 'PBGEN THOMAS R. FRIAS JR. (Ret)']
+            box_titles = ['Victor M. Villanueva', 'Arnel Abella', 'Roel Lumabao', 'PBGEN THOMAS R. FRIAS JR. (Ret)']
             box_titles2 = ["General Manager","Admin, External Security Operations","External Security Operations Manager","Director Physical Security/SSD"]
         
 
