@@ -14,7 +14,7 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning) 
 
 # plt.rcParams.update({'font.size': 22})
-sys_ver = "0.25"
+sys_ver = "0.26"
 root = tk.Tk()
 root.title('Summary Report v'+str(sys_ver))
 root.iconbitmap('summaryreporticon.ico')
@@ -1377,8 +1377,8 @@ def savePdflandscape(dfproc,reporttype):
         box_titles1 = ['Prepared by:', 'Checked by:', 'Noted by:', 'Approved by:']
 
         if userlogin == "SNIFFER K9":
-            box_titles = ['Christopher Monderin', 'Arnel Abella', 'Roel Lumabao', 'PBGEN THOMAS R. FRIAS JR. (Ret)']
-            box_titles2 = ["Operations Manager","Admin, External Security Operations","External Security Operations Manager","Director Physical Security/SSD"]
+            box_titles = ['Leonel R Rosqueta', 'Arnel Abella', 'Roel Lumabao', 'PBGEN THOMAS R. FRIAS JR. (Ret)']
+            box_titles2 = ["Supervisor","Admin, External Security Operations","External Security Operations Manager","Director Physical Security/SSD"]
         elif userlogin == "NESA": 
             box_titles = ['Christopher Monderin', 'Arnel Abella', 'Roel Lumabao', 'PBGEN THOMAS R. FRIAS JR. (Ret)']
             box_titles2 = ["Operations Manager","Admin, External Security Operations","External Security Operations Manager","Director Physical Security/SSD"]
@@ -1386,13 +1386,13 @@ def savePdflandscape(dfproc,reporttype):
             box_titles = ['John Steve Leonardo', 'Arnel Abella', 'Roel Lumabao', 'PBGEN THOMAS R. FRIAS JR. (Ret)']
             box_titles2 = ["Operations Manager","Admin, External Security Operations","External Security Operations Manager","Director Physical Security/SSD"]
         elif userlogin == "8ARMS":
-            box_titles = ['John Steve Leonardo', 'Arnel Abella', 'Roel Lumabao', 'PBGEN THOMAS R. FRIAS JR. (Ret)']
+            box_titles = ['Victor M. Villanueva', 'Arnel Abella', 'Roel Lumabao', 'PBGEN THOMAS R. FRIAS JR. (Ret)']
             box_titles2 = ["Operations Manager","Admin, External Security Operations","External Security Operations Manager","Director Physical Security/SSD"]
         elif userlogin == "JKK":
             box_titles = ['                   ', 'Arnel Abella', 'Roel Lumabao', 'PBGEN THOMAS R. FRIAS JR. (Ret)']
             box_titles2 = ["Operations Manager","Admin, External Security Operations","External Security Operations Manager","Director Physical Security/SSD"]
-        else:
-            box_titles = ['Victor M. Villanueva', 'Arnel Abella', 'Roel Lumabao', 'PBGEN THOMAS R. FRIAS JR. (Ret)']
+        else: #kenichi qrt construction
+            box_titles = ['Christianne Kuizon', 'Arnel Abella', 'Roel Lumabao', 'PBGEN THOMAS R. FRIAS JR. (Ret)']
             box_titles2 = ["General Manager","Admin, External Security Operations","External Security Operations Manager","Director Physical Security/SSD"]
         
 
